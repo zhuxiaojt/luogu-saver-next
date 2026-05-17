@@ -2,6 +2,12 @@ import { Cacheable } from '@/decorators/cacheable';
 import { CacheEvict } from '@/decorators/cache-evict';
 import { User } from '@/entities/user';
 import { EntityManager } from 'typeorm';
+import {
+    createServiceEntity,
+    findOneServiceEntity,
+    getServiceRepository,
+    saveServiceEntity
+} from '@/services/helpers/repository.helper';
 
 export class UserService {
     /*
@@ -13,12 +19,12 @@ export class UserService {
      * @returns User object or null if not found
      */
     @Cacheable(600, id => `user:${id}`, User)
-    static async getUserById(id: number): Promise<User | null> {
-        return await User.findOne({ where: { id } });
+    static async getUserById(id: number, manager?: EntityManager): Promise<User | null> {
+        return await findOneServiceEntity<User>(User, { where: { id } }, manager);
     }
 
     static async getUserByIdWithoutCache(id: number): Promise<User | null> {
-        return await User.findOne({ where: { id } });
+        return await this.getUserById(id, User.getRepository().manager);
     }
 
     /*
@@ -30,14 +36,12 @@ export class UserService {
      * @returns Saved user object
      */
     @CacheEvict((user: User) => `user:${user.id}`)
-    static async saveUser(user: User): Promise<User> {
-        return await user.save();
+    static async saveUser(user: User, manager?: EntityManager): Promise<User> {
+        return await saveServiceEntity<User>(User, user, manager);
     }
 
-    static createUser(data: Partial<User>): User {
-        const user = new User();
-        Object.assign(user, data);
-        return user;
+    static createUser(data: Partial<User>, manager?: EntityManager): User {
+        return createServiceEntity<User>(User, data, manager);
     }
 
     @CacheEvict((data: Partial<User>) => (data.id === undefined ? [] : `user:${data.id}`))
@@ -46,7 +50,7 @@ export class UserService {
             throw new Error('User ID is required');
         }
 
-        const repository = manager ? manager.getRepository(User) : User.getRepository();
+        const repository = getServiceRepository<User>(User, manager);
         const user = repository.create(data);
         await repository.upsert(user, ['id']);
         return user;

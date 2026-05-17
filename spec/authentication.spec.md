@@ -83,6 +83,9 @@ Cheater - Flagged user
 
 The `User.findById(id)` method is cached for 3 days (259200 seconds) with key pattern `user:${id}`.
 
+UserService cached read methods SHALL bypass Redis cache reads and writes when an optional `manager` argument is provided.
+UserService read/write methods that accept an optional `manager` argument SHALL use that `EntityManager` for database access when it is provided.
+
 ### 4.4 Luogu User Upsert
 
 The `UserService.upsertLuoguUser(data)` method SHALL:

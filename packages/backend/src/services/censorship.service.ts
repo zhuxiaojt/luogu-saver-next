@@ -1,21 +1,30 @@
 import { Censorship } from '@/entities/censorship';
 import { CensorTarget } from '@/shared/task';
+import { EntityManager } from 'typeorm';
+import {
+    createServiceEntity,
+    findServiceEntities,
+    saveServiceEntity
+} from '@/services/helpers/repository.helper';
 
 export class CensorshipService {
-    static async createCensorship(data: Partial<Censorship>): Promise<Censorship> {
-        const censorship = new Censorship();
-        Object.assign(censorship, data);
-        return censorship;
+    static createCensorship(data: Partial<Censorship>, manager?: EntityManager): Censorship {
+        return createServiceEntity<Censorship>(Censorship, data, manager);
     }
 
-    static async saveCensorship(censorship: Censorship) {
-        return await censorship.save();
+    static async saveCensorship(censorship: Censorship, manager?: EntityManager) {
+        return await saveServiceEntity<Censorship>(Censorship, censorship, manager);
     }
 
     static async getCensorshipsByTypeAndId(
         type: CensorTarget,
-        targetId: string
+        targetId: string,
+        manager?: EntityManager
     ): Promise<Censorship[] | null> {
-        return await Censorship.find({ where: { type, targetId }, order: { createdAt: 'DESC' } });
+        return await findServiceEntities<Censorship>(
+            Censorship,
+            { where: { type, targetId }, order: { createdAt: 'DESC' } },
+            manager
+        );
     }
 }

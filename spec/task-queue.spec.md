@@ -165,6 +165,11 @@ Query task status.
 1. Query the database for the task.
 2. Return the task or null.
 
+### 5.5 EntityManager support
+
+1. If a TaskService read/write method receives an optional `manager` argument, it SHALL use that `EntityManager` for database access.
+2. If no `manager` is provided, the method SHALL use the default task repository.
+
 ## 6. Queue System
 
 ### 6.1 Queue Factory

@@ -1,11 +1,12 @@
 import { Workflow } from '@/entities/workflow';
 import { In, Not } from 'typeorm';
+import { findOneServiceEntity, getServiceRepository } from '@/services/helpers/repository.helper';
 
 const TERMINAL_WORKFLOW_STATUSES = ['completed', 'failed', 'expired'];
 
 export class WorkflowStatusStore {
     static async updateById(id: string, status: string): Promise<string | null> {
-        const result = await Workflow.update(
+        const result = await getServiceRepository<Workflow>(Workflow).update(
             { id, status: Not(In(TERMINAL_WORKFLOW_STATUSES)) },
             { status }
         );
@@ -18,7 +19,7 @@ export class WorkflowStatusStore {
     }
 
     static async updateByRootJobId(rootJobId: string, status: string): Promise<number> {
-        const result = await Workflow.update(
+        const result = await getServiceRepository<Workflow>(Workflow).update(
             { rootJobId, status: Not(In(TERMINAL_WORKFLOW_STATUSES)) },
             { status }
         );
@@ -27,7 +28,7 @@ export class WorkflowStatusStore {
     }
 
     private static async getStatusById(id: string): Promise<string | null> {
-        const workflow = await Workflow.findOne({
+        const workflow = await findOneServiceEntity<Workflow>(Workflow, {
             where: { id },
             select: ['status']
         });

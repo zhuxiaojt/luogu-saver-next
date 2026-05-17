@@ -1,10 +1,16 @@
 import { Cacheable } from '@/decorators/cacheable';
 import { CacheEvict } from '@/decorators/cache-evict';
 import { Article } from '@/entities/article';
-import { In, MoreThan } from 'typeorm';
-import { createHash } from 'crypto'; // Imported
-import { ArticleHistoryService } from './article-history.service'; // Imported
-import { ArticleCategory } from '@/shared/article'; // Imported
+import { EntityManager, In, MoreThan } from 'typeorm';
+import { ArticleHistoryService } from './article-history.service';
+import { ArticleCategory } from '@/shared/article';
+import {
+    findOneServiceEntity,
+    findServiceEntities,
+    getServiceRepository,
+    saveServiceEntity
+} from '@/services/helpers/repository.helper';
+import { saveHashedContent } from '@/services/helpers/hashed-content.helper';
 
 export class ArticleService {
     /*
@@ -16,12 +22,16 @@ export class ArticleService {
      * @return Article or null if not found
      */
     @Cacheable(600, id => `article:${id}`, Article)
-    static async getArticleById(id: string): Promise<Article | null> {
-        return await Article.findOne({ where: { id }, relations: ['author'] });
+    static async getArticleById(id: string, manager?: EntityManager): Promise<Article | null> {
+        return await findOneServiceEntity<Article>(
+            Article,
+            { where: { id }, relations: ['author'] },
+            manager
+        );
     }
 
     static async getArticleByIdWithoutCache(id: string): Promise<Article | null> {
-        return await Article.findOne({ where: { id }, relations: ['author'] });
+        return await this.getArticleById(id, Article.getRepository().manager);
     }
 
     /*
@@ -38,19 +48,27 @@ export class ArticleService {
         (count, after) => `article:recent:${count}:${after ? after.getTime() : 'all'}`,
         Article
     )
-    static async getRecentArticles(count: number = 20, updatedAfter?: Date): Promise<Article[]> {
-        return await Article.find({
-            where: {
-                deleted: false,
-                updatedAt: updatedAfter ? MoreThan(updatedAfter) : undefined
+    static async getRecentArticles(
+        count: number = 20,
+        updatedAfter?: Date,
+        manager?: EntityManager
+    ): Promise<Article[]> {
+        return await findServiceEntities<Article>(
+            Article,
+            {
+                where: {
+                    deleted: false,
+                    updatedAt: updatedAfter ? MoreThan(updatedAfter) : undefined
+                },
+                order: {
+                    priority: 'DESC',
+                    updatedAt: 'DESC'
+                },
+                take: count,
+                relations: ['author']
             },
-            order: {
-                priority: 'DESC',
-                updatedAt: 'DESC'
-            },
-            take: count,
-            relations: ['author']
-        });
+            manager
+        );
     }
 
     /*
@@ -61,8 +79,10 @@ export class ArticleService {
      * @return Total article count
      */
     @Cacheable(600, () => 'article:count')
-    static async getArticleCount(): Promise<number> {
-        return await Article.count({ where: { deleted: false } });
+    static async getArticleCount(manager?: EntityManager): Promise<number> {
+        return await getServiceRepository<Article>(Article, manager).count({
+            where: { deleted: false }
+        });
     }
 
     /*
@@ -73,8 +93,12 @@ export class ArticleService {
      * @param count Number of articles to retrieve
      * @return List of articles ordered by view count
      */
-    static async getArticlesOrderedByViewCount(count: number = 10): Promise<Article[]> {
-        return await Article.createQueryBuilder('article')
+    static async getArticlesOrderedByViewCount(
+        count: number = 10,
+        manager?: EntityManager
+    ): Promise<Article[]> {
+        return await getServiceRepository<Article>(Article, manager)
+            .createQueryBuilder('article')
             .where('article.deleted = :deleted', { deleted: false })
             .orderBy('article.viewCount', 'DESC')
             .limit(count)
@@ -89,8 +113,12 @@ export class ArticleService {
      * @param count Number of articles to retrieve
      * @return List of recent articles
      */
-    static async getRecentArticlesWithoutCache(count: number = 10): Promise<Article[]> {
-        return await Article.createQueryBuilder('article')
+    static async getRecentArticlesWithoutCache(
+        count: number = 10,
+        manager?: EntityManager
+    ): Promise<Article[]> {
+        return await getServiceRepository<Article>(Article, manager)
+            .createQueryBuilder('article')
             .where('article.deleted = :deleted', { deleted: false })
             .orderBy('article.updatedAt', 'DESC')
             .limit(count)
@@ -119,13 +147,17 @@ export class ArticleService {
      * @param ids List of article IDs
      * @return List of articles matching the IDs
      */
-    static async getArticlesByIds(ids: string[]) {
+    static async getArticlesByIds(ids: string[], manager?: EntityManager) {
         if (!ids || ids.length === 0) return [];
 
-        const articles = await Article.find({
-            where: { id: In(ids), deleted: false },
-            relations: ['author']
-        });
+        const articles = await findServiceEntities<Article>(
+            Article,
+            {
+                where: { id: In(ids), deleted: false },
+                relations: ['author']
+            },
+            manager
+        );
         const articleMap = new Map(articles.map(a => [a.id, a]));
         return ids.map(id => articleMap.get(id)).filter(article => !!article);
     }
@@ -138,11 +170,15 @@ export class ArticleService {
      * @param authorId Author ID
      * @return List of articles by the author
      */
-    static async getArticlesByAuthor(authorId: number) {
-        return await Article.find({
-            where: { authorId: authorId, deleted: false },
-            relations: ['author']
-        });
+    static async getArticlesByAuthor(authorId: number, manager?: EntityManager) {
+        return await findServiceEntities<Article>(
+            Article,
+            {
+                where: { authorId: authorId, deleted: false },
+                relations: ['author']
+            },
+            manager
+        );
     }
 
     /*
@@ -153,8 +189,8 @@ export class ArticleService {
      * @param article Article to save
      */
     @CacheEvict((article: Article) => [`article:${article.id}`, `article:count`])
-    static async saveArticle(article: Article) {
-        await article.save();
+    static async saveArticle(article: Article, manager?: EntityManager) {
+        await saveServiceEntity<Article>(Article, article, manager);
     }
 
     static async saveLuoguArticle(
@@ -164,45 +200,36 @@ export class ArticleService {
         let result = { skipped: false, content: '' };
 
         await Article.transaction(async manager => {
-            const hash = createHash('sha256').update(data.content).digest('hex');
-            let article = await manager.findOne(Article, {
-                where: { id: data.lid },
-                lock: { mode: 'pessimistic_write' }
+            const saveResult = await saveHashedContent<Article>({
+                manager,
+                entity: Article,
+                id: data.lid,
+                content: data.content,
+                forceUpdate,
+                incomingData: {
+                    title: data.title,
+                    authorId: data.author.uid,
+                    category: data.category as ArticleCategory,
+                    solutionForPid: data.solutionFor?.pid,
+                    upvote: data.upvote,
+                    favorCount: data.favorCount
+                },
+                defaults: {
+                    deleted: false,
+                    viewCount: 0,
+                    tags: [],
+                    priority: 0
+                },
+                isUnchanged: (article, hash) =>
+                    article.title === data.title && article.contentHash === hash
             });
 
-            if (
-                !forceUpdate &&
-                article &&
-                article.title === data.title &&
-                article.contentHash === hash
-            ) {
+            if (saveResult.skipped || !saveResult.entity) {
                 result = { skipped: true, content: '' };
                 return;
             }
 
-            const incomingData: Partial<Article> = {
-                title: data.title,
-                authorId: data.author.uid,
-                content: data.content,
-                contentHash: hash,
-                category: data.category as ArticleCategory,
-                solutionForPid: data.solutionFor?.pid,
-                upvote: data.upvote,
-                favorCount: data.favorCount
-            };
-
-            if (article) {
-                Object.assign(article, incomingData);
-            } else {
-                article = new Article();
-                article.id = data.lid;
-                article.deleted = false;
-                article.viewCount = 0;
-                article.tags = [];
-                article.priority = 0;
-                Object.assign(article, incomingData);
-            }
-            await manager.save(article);
+            const article = saveResult.entity;
             await ArticleHistoryService.pushNewVersion(
                 article.id,
                 article.title,

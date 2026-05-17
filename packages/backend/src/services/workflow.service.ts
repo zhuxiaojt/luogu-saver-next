@@ -8,6 +8,11 @@ import { randomUUID } from 'node:crypto';
 import { WorkflowBuilder } from './helpers/workflow-builder.helper';
 import { getQueueByName } from '@/lib/queue-factory';
 import { WorkflowStatusStore } from '@/services/helpers/workflow-status-store.helper';
+import {
+    findOneServiceEntity,
+    getServiceRepository,
+    saveServiceEntity
+} from '@/services/helpers/repository.helper';
 
 export class WorkflowService {
     private static _flowProducer: FlowProducer;
@@ -54,11 +59,11 @@ export class WorkflowService {
         });
 
         try {
-            await workflow.save();
+            await saveServiceEntity<Workflow>(Workflow, workflow);
             await this.flowProducer.add(rootJobNode);
         } catch (error) {
             try {
-                await Workflow.delete({ id: workflowId });
+                await getServiceRepository<Workflow>(Workflow).delete({ id: workflowId });
             } catch (cleanupError) {
                 logger.error({ cleanupError, workflowId }, 'Failed to clean up workflow row');
             }
@@ -80,7 +85,7 @@ export class WorkflowService {
     }
 
     static async getWorkflowById(id: string) {
-        const workflow = await Workflow.findOne({ where: { id } });
+        const workflow = await findOneServiceEntity<Workflow>(Workflow, { where: { id } });
         if (!workflow) return null;
 
         if (workflow.status === 'expired') {

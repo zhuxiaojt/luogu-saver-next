@@ -153,6 +153,9 @@ Get total count of non-deleted articles.
 | `getArticleCount()`               | 600s      | `article:count`                               |
 | `saveArticle(article)`            | evicts    | `article:${id}`, `article:count`              |
 
+Each ArticleService read/write method that accepts an optional `manager` argument SHALL use that `EntityManager` for database access when it is provided.
+When a cached read method receives a manager argument, it SHALL bypass Redis cache reads and writes.
+
 ### 5.2 ArticleHistoryService
 
 | Method                             | Cache TTL | Cache Key Pattern              |
@@ -168,6 +171,9 @@ When `pushNewVersion` is called:
 2. Calculate `newVersion = latestVersion + 1` (or 1 if no history exists).
 3. Create and save a new `ArticleHistory` record.
 4. Evict the history cache.
+
+If ArticleHistoryService receives an optional `manager` argument, it SHALL use that `EntityManager` for database access.
+When a cached read method receives a manager argument, it SHALL bypass Redis cache reads and writes.
 
 ## 6. Content Rendering
 

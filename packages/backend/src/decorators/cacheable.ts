@@ -1,6 +1,7 @@
 import { redisClient } from '@/lib/redis';
 import { plainToInstance } from 'class-transformer';
 import { logger } from '@/lib/logger';
+import { EntityManager } from 'typeorm';
 
 export type ClassConstructor<T> = { new (...args: any[]): T };
 
@@ -12,6 +13,10 @@ export function Cacheable<T>(
     return function (target: object, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
         descriptor.value = async function (...args: any[]) {
+            if (args.some(arg => arg instanceof EntityManager)) {
+                return await originalMethod.apply(this, args);
+            }
+
             const cacheKey = keyGenerator(...args);
             try {
                 const cachedResult = await redisClient.get(cacheKey);

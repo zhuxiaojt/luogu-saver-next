@@ -64,6 +64,9 @@ Get total count of non-deleted pastes.
 | `getPasteCount()`  | 600s      | `paste:count`     | -                            |
 | `savePaste(paste)` | evicts    | -                 | `paste:${id}`, `paste:count` |
 
+Each PasteService read/write method that accepts an optional `manager` argument SHALL use that `EntityManager` for database access when it is provided.
+When a cached read method receives a manager argument, it SHALL bypass Redis cache reads and writes.
+
 ### 4.2 Method Specifications
 
 #### getPasteById(id: string): Promise<Paste | null>

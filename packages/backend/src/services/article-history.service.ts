@@ -3,6 +3,12 @@ import { CacheEvict } from '@/decorators/cache-evict';
 import { Cacheable } from '@/decorators/cacheable';
 import { Article } from '@/entities/article'; // Import Article for locking
 import { EntityManager } from 'typeorm';
+import {
+    createServiceEntity,
+    findOneServiceEntity,
+    findServiceEntities,
+    saveServiceEntity
+} from '@/services/helpers/repository.helper';
 
 export class ArticleHistoryService {
     /*
@@ -22,23 +28,35 @@ export class ArticleHistoryService {
         transactionalEntityManager?: EntityManager
     ): Promise<void> {
         const run = async (manager: EntityManager) => {
-            await manager.findOne(Article, {
-                where: { id: articleId },
-                lock: { mode: 'pessimistic_write' }
-            });
+            await findOneServiceEntity<Article>(
+                Article,
+                {
+                    where: { id: articleId },
+                    lock: { mode: 'pessimistic_write' }
+                },
+                manager
+            );
 
-            const latestHistory = await manager.findOne(ArticleHistory, {
-                where: { articleId },
-                order: { version: 'DESC' }
-            });
+            const latestHistory = await findOneServiceEntity<ArticleHistory>(
+                ArticleHistory,
+                {
+                    where: { articleId },
+                    order: { version: 'DESC' }
+                },
+                manager
+            );
             const newVersion = latestHistory ? latestHistory.version + 1 : 1;
-            const newHistory = ArticleHistory.create({
-                articleId,
-                version: newVersion,
-                title,
-                content
-            });
-            await manager.save(newHistory);
+            const newHistory = createServiceEntity<ArticleHistory>(
+                ArticleHistory,
+                {
+                    articleId,
+                    version: newVersion,
+                    title,
+                    content
+                },
+                manager
+            );
+            await saveServiceEntity<ArticleHistory>(ArticleHistory, newHistory, manager);
         };
 
         if (transactionalEntityManager) {
@@ -57,10 +75,17 @@ export class ArticleHistoryService {
      * @returns An array of ArticleHistory entries
      */
     @Cacheable(600, (articleId: string) => `article_history:${articleId}`, ArticleHistory)
-    public static async getHistoryByArticleId(articleId: string): Promise<ArticleHistory[]> {
-        return await ArticleHistory.find({
-            where: { articleId },
-            order: { version: 'ASC' }
-        });
+    public static async getHistoryByArticleId(
+        articleId: string,
+        manager?: EntityManager
+    ): Promise<ArticleHistory[]> {
+        return await findServiceEntities<ArticleHistory>(
+            ArticleHistory,
+            {
+                where: { articleId },
+                order: { version: 'ASC' }
+            },
+            manager
+        );
     }
 }
