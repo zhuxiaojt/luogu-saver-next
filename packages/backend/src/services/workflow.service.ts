@@ -15,6 +15,7 @@ import {
     saveServiceEntity
 } from '@/services/helpers/repository.helper';
 import { TaskStatus } from '@/shared/task';
+import { getRandomString } from '@/utils/string';
 
 export class WorkflowService {
     private static _flowProducer: FlowProducer;
@@ -38,17 +39,18 @@ export class WorkflowService {
 
         const workflowId = randomUUID();
         const taskIds = this.createTaskIds(definition);
-        const reportTasks = new Set(definition.reportTasks);
         const rootJobNode = WorkflowBuilder.buildLinearFlow(definition.tasks, {
             workflowId,
-            taskIds,
-            reportTasks
+            taskIds
         });
         const rootJobId = rootJobNode.opts?.jobId;
         if (!rootJobId) {
             throw new Error('Workflow root job ID missing');
         }
-        const reportTaskIds = this.pickTaskIds(taskIds, definition.reportTasks);
+        const reportTaskIds = this.pickTaskIds(
+            taskIds,
+            definition.tasks.filter(task => task.report === true).map(task => task.name)
+        );
 
         const result: Record<string, any> = {};
         definition.tasks.forEach(task => {
@@ -145,7 +147,7 @@ export class WorkflowService {
     }
 
     private static createTaskIds(definition: WorkflowDefinition): Record<string, string> {
-        return Object.fromEntries(definition.tasks.map(task => [task.name, randomUUID()]));
+        return Object.fromEntries(definition.tasks.map(task => [task.name, getRandomString(16)]));
     }
 
     private static pickTaskIds(

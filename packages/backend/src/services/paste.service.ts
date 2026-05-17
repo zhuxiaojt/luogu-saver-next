@@ -8,6 +8,7 @@ import {
     saveServiceEntity
 } from '@/services/helpers/repository.helper';
 import { saveHashedContent } from '@/services/helpers/hashed-content.helper';
+import type { Paste as LuoguPaste } from '@/types/luogu-api';
 
 export class PasteService {
     @Cacheable(600, id => `paste:${id}`, Paste)
@@ -35,8 +36,9 @@ export class PasteService {
         return await saveServiceEntity<Paste>(Paste, paste, manager);
     }
 
+    @CacheEvict((paste: LuoguPaste) => [`paste:${paste.id}`, `paste:count`])
     static async saveLuoguPaste(
-        data: any,
+        data: LuoguPaste,
         forceUpdate: boolean = false
     ): Promise<{ skipped: boolean; content: string }> {
         let result = { skipped: false, content: '' };

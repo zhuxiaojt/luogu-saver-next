@@ -19,6 +19,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
             {
                 name: 'save',
                 track: true,
+                report: true,
                 data: {
                     type: 'save',
                     payload: {
@@ -103,10 +104,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
             }
         ];
 
-        return {
-            reportTasks: ['save'],
-            tasks
-        };
+        return { tasks };
     },
     'article-censor-pipeline': (params: any) => {
         const { targetId } = params;
@@ -118,6 +116,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
             {
                 name: 'censor',
                 track: true,
+                report: true,
                 data: {
                     type: 'llm',
                     payload: {
@@ -143,9 +142,6 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
             }
         ];
 
-        return {
-            reportTasks: ['censor'],
-            tasks
-        };
+        return { tasks };
     }
 };

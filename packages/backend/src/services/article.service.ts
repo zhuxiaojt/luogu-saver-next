@@ -11,6 +11,7 @@ import {
     saveServiceEntity
 } from '@/services/helpers/repository.helper';
 import { saveHashedContent } from '@/services/helpers/hashed-content.helper';
+import type { Article as LuoguArticle } from '@/types/luogu-api';
 
 export class ArticleService {
     /*
@@ -193,8 +194,9 @@ export class ArticleService {
         await saveServiceEntity<Article>(Article, article, manager);
     }
 
+    @CacheEvict((article: LuoguArticle) => [`article:${article.lid}`, `article:count`])
     static async saveLuoguArticle(
-        data: any,
+        data: LuoguArticle,
         forceUpdate: boolean = false
     ): Promise<{ skipped: boolean; content: string }> {
         let result = { skipped: false, content: '' };

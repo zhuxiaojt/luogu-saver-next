@@ -190,6 +190,7 @@ When saving an article:
 2. Compare with existing `contentHash`.
 3. If hashes match AND titles match, skip the update.
 4. Otherwise, save the new content and update `contentHash`.
+5. After a successful update, delete Redis keys `article:{id}` and `article:count` before returning.
 
 ## 8. Invariants
 

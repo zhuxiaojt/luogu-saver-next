@@ -129,6 +129,14 @@ const loadHistory = async () => {
 
 let stopTaskListener: (() => void) | null = null;
 
+const getSaveReportTaskId = (response: Awaited<ReturnType<typeof saveArticle>>) => {
+    if (response.code !== 200 || !response.data?.reportTaskIds?.save) {
+        throw new Error(response.message || '保存请求提交失败');
+    }
+
+    return response.data.reportTaskIds.save;
+};
+
 const trackSaveTask = (taskId?: string) => {
     if (!taskId) return;
     stopTaskListener?.();
@@ -136,6 +144,7 @@ const trackSaveTask = (taskId?: string) => {
         taskId,
         () => {
             stopTaskListener = null;
+            message.success('保存任务处理完成');
         },
         error => {
             stopTaskListener = null;
@@ -145,7 +154,7 @@ const trackSaveTask = (taskId?: string) => {
                 positiveText: '重试',
                 negativeText: '取消',
                 onPositiveClick: async () => {
-                    trackSaveTask((await saveArticle(articleId)).data.reportTaskIds.save);
+                    trackSaveTask(getSaveReportTaskId(await saveArticle(articleId)));
                 },
                 maskClosable: false,
                 closable: false,
@@ -157,7 +166,7 @@ const trackSaveTask = (taskId?: string) => {
 
 const submitSaveArticle = async () => {
     const response = await saveArticle(articleId);
-    trackSaveTask(response.data.reportTaskIds.save);
+    trackSaveTask(getSaveReportTaskId(response));
     return response;
 };
 

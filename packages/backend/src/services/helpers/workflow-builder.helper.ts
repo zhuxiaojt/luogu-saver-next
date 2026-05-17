@@ -11,7 +11,6 @@ interface FlowTask extends TaskDefinition {
 type WorkflowBuildOptions = {
     workflowId: string;
     taskIds: Record<string, string>;
-    reportTasks: Set<string>;
 };
 
 export class WorkflowBuilder {
@@ -37,7 +36,7 @@ export class WorkflowBuilder {
                     workflowId: options.workflowId,
                     taskName: task.name,
                     track: task.track,
-                    report: options.reportTasks.has(task.name),
+                    report: task.report === true,
                     __isRoot: isRoot,
                     __fathers: task.fathers || []
                 },

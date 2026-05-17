@@ -10,6 +10,7 @@ export function useContentSaver() {
     const isSaving = ref(false);
     const hasUpdate = ref(false);
     const cleanupCallbacks = new Set<() => void>();
+    let updateDialogOpen = false;
 
     const addCleanup = (cleanup: () => void) => {
         cleanupCallbacks.add(cleanup);
@@ -59,14 +60,20 @@ export function useContentSaver() {
         const handleUpdate = () => {
             stopSaving();
             hasUpdate.value = true;
+            if (updateDialogOpen) return;
+            updateDialogOpen = true;
             dialog.info({
                 title: '内容已更新',
                 content: '检测到当前内容有新的版本，是否立即刷新页面以查看最新内容？',
                 positiveText: '刷新',
                 negativeText: '稍后',
                 onPositiveClick: () => {
+                    updateDialogOpen = false;
                     hasUpdate.value = false;
                     onRefresh();
+                },
+                onNegativeClick: () => {
+                    updateDialogOpen = false;
                 }
             });
         };

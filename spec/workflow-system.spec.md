@@ -27,11 +27,11 @@ The API accepts exactly this JSON shape:
 
 ```json
 {
-    "reportTasks": ["save"],
     "tasks": [
         {
             "name": "save",
             "track": true,
+            "report": true,
             "fathers": [],
             "data": {
                 "type": "save",
@@ -48,11 +48,10 @@ Validation rules:
 2. Each task MUST have a unique non-empty `name`.
 3. If `fathers` is present, it MUST be an array of task names that exist in `tasks`.
 4. The logical graph defined by `fathers` MUST be acyclic.
-5. `reportTasks` MUST be an array of task names that exist in `tasks`.
-6. `reportTasks` MUST NOT contain duplicate names.
-7. `track = true` means the task completion payload is written into `workflow.result[taskName]`.
-8. `reportTasks` means the task emits websocket completion/failure events for clients that join `task:{taskId}`.
-9. `track` and `reportTasks` are independent. A task MAY be tracked but not reported, or reported but not tracked.
+5. If `report` is present on a task, it MUST be a boolean.
+6. `track = true` means the task completion payload is written into `workflow.result[taskName]`.
+7. `report = true` means the task emits websocket completion/failure events for clients that join `task:{taskId}`.
+8. `track` and `report` are independent. A task MAY be tracked but not reported, or reported but not tracked.
 
 ## 4. API Endpoints
 
@@ -67,12 +66,12 @@ Output:
 ```json
 {
     "workflowId": "<uuid>",
-    "rootJobId": "<task_id>",
+    "rootJobId": "<16_char_task_id>",
     "taskIds": {
-        "<taskName>": "<task_id>"
+        "<taskName>": "<16_char_task_id>"
     },
     "reportTaskIds": {
-        "<reportTaskName>": "<task_id>"
+        "<reportTaskName>": "<16_char_task_id>"
     }
 }
 ```
@@ -82,9 +81,10 @@ Postconditions:
 1. A `workflow` row is created with `id = workflowId` before any workflow task row is created.
 2. For every item in `tasks`, one `task` row is created before the BullMQ Flow is submitted.
 3. Each workflow node BullMQ job ID equals the corresponding `task.id`.
-4. `workflow.root_job_id` equals the BullMQ root job ID and equals one value in `taskIds`.
-5. The submitted BullMQ Flow contains every task in `tasks` exactly once.
-6. If workflow creation fails before the API response is sent, no `workflow` row with `id = workflowId` remains in the database.
+4. Each task ID in `taskIds` is a 16-character random string.
+5. `workflow.root_job_id` equals the BullMQ root job ID and equals one value in `taskIds`.
+6. The submitted BullMQ Flow contains every task in `tasks` exactly once.
+7. If workflow creation fails before the API response is sent, no `workflow` row with `id = workflowId` remains in the database.
 
 ### 4.2 POST `/workflow/create/template/:name`
 
@@ -136,13 +136,9 @@ For tracked task entries that are not finished yet, `result[taskName]` is `null`
 
 Required input: `targetId`.
 
-Report tasks:
-
-1. `save`
-
 Task graph by logical dependency:
 
-1. `save` (tracked)
+1. `save` (tracked, reported)
 2. `summary` depends on `save` (tracked)
 3. `censor` depends on `save` (tracked)
 4. `embedding` depends on `summary`
@@ -156,13 +152,9 @@ Permission: public (`null` permission mapping).
 
 Required input: `targetId`.
 
-Report tasks:
-
-1. `censor`
-
 Task graph:
 
-1. `censor` (tracked)
+1. `censor` (tracked, reported)
 2. `update-censor` depends on `censor`
 
 Permission: `CREATE_WORKFLOW`.
@@ -194,5 +186,5 @@ Permission: `CREATE_WORKFLOW`.
 1. `workflowId` is the only workflow identifier accepted by `/workflow/query/:id`.
 2. `rootJobId` is exposed only as the BullMQ root job locator.
 3. Every value in `taskIds` is both a `task.id` and a BullMQ job ID.
-4. `reportTaskIds` contains exactly the task-name subset declared by `reportTasks`.
+4. `reportTaskIds` contains exactly the task-name subset whose task definition has `report = true`.
 5. Template permission lookup is exact-key based; missing keys are rejected as invalid templates.

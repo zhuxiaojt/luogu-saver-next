@@ -14,7 +14,7 @@ export const AppDataSource = new DataSource({
     database: config.db.database,
 
     synchronize: true,
-    logging: true,
+    logging: false,
 
     entities: [path.join(__dirname, '/entities/*.{ts,js}')],
     namingStrategy: new SnakeNamingStrategy(),

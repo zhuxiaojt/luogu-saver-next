@@ -54,6 +54,10 @@ Table name: `task`
 interface CommonTask {
     id: string;
     type: TaskType;
+    workflowId?: string;
+    taskName?: string;
+    track?: boolean;
+    report?: boolean;
     payload: {
         target: string;
         [key: string]: any;

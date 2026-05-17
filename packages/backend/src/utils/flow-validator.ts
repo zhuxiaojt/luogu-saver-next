@@ -3,21 +3,17 @@ export interface TaskDefinition {
     data?: any;
     fathers?: string[];
     track?: boolean;
+    report?: boolean;
     [key: string]: any;
 }
 
 export interface WorkflowDefinition {
-    reportTasks: string[];
     tasks: TaskDefinition[];
 }
 
 export function validateFlowStructure(definition: WorkflowDefinition): void {
     if (!definition || typeof definition !== 'object' || Array.isArray(definition)) {
         throw new Error('Workflow definition must be an object');
-    }
-
-    if (!Array.isArray(definition.reportTasks)) {
-        throw new Error('Workflow reportTasks must be an array');
     }
 
     const tasks = definition.tasks;
@@ -34,6 +30,9 @@ export function validateFlowStructure(definition: WorkflowDefinition): void {
     for (const task of tasks) {
         if (!task.name || typeof task.name !== 'string') {
             throw new Error('All tasks must have a name');
+        }
+        if (task.report !== undefined && typeof task.report !== 'boolean') {
+            throw new Error(`Report flag for task ${task.name} must be a boolean`);
         }
         if (taskMap.has(task.name)) {
             throw new Error(`Duplicate task name found: ${task.name}`);
@@ -52,20 +51,6 @@ export function validateFlowStructure(definition: WorkflowDefinition): void {
                 }
             }
         }
-    }
-
-    const reportTaskSet = new Set<string>();
-    for (const taskName of definition.reportTasks) {
-        if (typeof taskName !== 'string') {
-            throw new Error('Workflow reportTasks must contain task names');
-        }
-        if (reportTaskSet.has(taskName)) {
-            throw new Error(`Duplicate report task found: ${taskName}`);
-        }
-        if (!taskMap.has(taskName)) {
-            throw new Error(`Report task not found: ${taskName}`);
-        }
-        reportTaskSet.add(taskName);
     }
 
     detectCycles(tasks, taskMap);
