@@ -181,6 +181,8 @@ The `article.renderContent()` method:
 
 1. If `content` is non-empty, render Markdown to HTML using the `renderMarkdown` library.
 2. Store the result in `article.renderedContent`.
+3. Math rendering SHALL ignore HAST element nodes that do not have a `properties` object.
+4. A HAST element without `properties` SHALL NOT cause `article.renderContent()` to return a failure paragraph.
 
 ## 7. Content Hashing
 

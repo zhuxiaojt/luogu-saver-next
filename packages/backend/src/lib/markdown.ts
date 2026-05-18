@@ -10,8 +10,21 @@ import { visit } from 'unist-util-visit';
 import rehypeSanitize, { defaultSchema, type Options } from 'rehype-sanitize';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import type { Root } from 'hast';
+import type { VFile } from 'vfile';
 
 let processorPromise: Promise<any> | null = null;
+
+function rehypeSafeKatex(options?: Parameters<typeof rehypeKatex>[0]) {
+    const transform = rehypeKatex(options);
+
+    return (tree: Root, file: VFile) => {
+        visit(tree, 'element', node => {
+            node.properties ||= {};
+        });
+        return transform(tree, file);
+    };
+}
 
 async function getProcessor() {
     if (processorPromise) return processorPromise;
@@ -233,7 +246,7 @@ async function getProcessor() {
             .use(rehypeRaw)
             .use(rehypeSanitize, schema)
             .use(rehypeCustomContainers)
-            .use(rehypeKatex)
+            .use(rehypeSafeKatex)
             .use(rehypeShiki, {
                 themes: { light: 'github-light', dark: 'github-light' },
                 langs: [
