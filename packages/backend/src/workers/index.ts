@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger';
 
 import { ArticleHandler } from '@/workers/handlers/task/save/article.handler';
 import { PasteHandler } from '@/workers/handlers/task/save/paste.handler';
+import { ProfileHandler } from '@/workers/handlers/task/save/profile.handler';
 import { SummaryHandler } from '@/workers/handlers/task/llm/summary.handler';
 import { EmbeddingHandler } from '@/workers/handlers/task/llm/embedding.handler';
 import { ChatHandler } from '@/workers/handlers/task/llm/chat.handler';
@@ -36,6 +37,7 @@ export function bootstrap() {
 
     saveProcessor.registerHandler(new ArticleHandler());
     saveProcessor.registerHandler(new PasteHandler());
+    saveProcessor.registerHandler(new ProfileHandler());
 
     aiProcessor.registerHandler(new SummaryHandler());
     aiProcessor.registerHandler(new EmbeddingHandler());

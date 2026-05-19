@@ -2,7 +2,7 @@ import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } fro
 
 import { BaseEntity } from './base';
 
-import { UserColor } from '@/shared/user';
+import { UserColor, UserPrize } from '@/shared/user';
 import { Cacheable } from '@/decorators/cacheable';
 
 @Entity({ name: 'user' })
@@ -15,6 +15,18 @@ export class User extends BaseEntity {
 
     @Column({ type: 'varchar' })
     color: UserColor;
+
+    @Column({ name: 'ccf_level', type: 'int', default: 0 })
+    ccfLevel: number;
+
+    @Column({ name: 'xcpc_level', type: 'int', default: 0 })
+    xcpcLevel: number;
+
+    @Column({ type: 'json', nullable: true })
+    prizes: UserPrize[] | null;
+
+    @Column({ name: 'profile_fetched_at', type: 'datetime', nullable: true })
+    profileFetchedAt: Date | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: number;

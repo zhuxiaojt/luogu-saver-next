@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NAvatar } from 'naive-ui';
 import type { User } from '@/types/user';
+import UserPrizeBadge from './UserPrizeBadge.vue';
 
 defineProps<{
     user?: User;
@@ -17,14 +18,18 @@ defineProps<{
             :src="`https://cdn.luogu.com.cn/upload/usericon/${user?.id || 3}.png`"
             style="margin-right: 8px"
         />
-        <a
-            :href="`/user/${user?.id}`"
+        <router-link
+            :to="`/user/${user?.id}`"
             class="user-name"
             :class="`user-${user?.color || 'Gray'}`"
-            target="_blank"
         >
             {{ user?.name || '未知用户' }}
-        </a>
+        </router-link>
+        <UserPrizeBadge
+            v-if="user && ((user.ccfLevel ?? 0) > 0 || (user.xcpcLevel ?? 0) > 0)"
+            :ccf-level="user.ccfLevel ?? 0"
+            :xcpc-level="user.xcpcLevel ?? 0"
+        />
     </div>
 </template>
 

@@ -217,10 +217,11 @@ interface TaskHandler<T extends CommonTask> {
 
 ### 7.3 Registered Handlers
 
-| Handler Key    | Handler Class  | Description                  |
-| -------------- | -------------- | ---------------------------- |
-| `save:article` | ArticleHandler | Fetch and save Luogu article |
-| `save:paste`   | PasteHandler   | Fetch and save Luogu paste   |
+| Handler Key    | Handler Class  | Description                       |
+| -------------- | -------------- | --------------------------------- |
+| `save:article` | ArticleHandler | Fetch and save Luogu article      |
+| `save:paste`   | PasteHandler   | Fetch and save Luogu paste        |
+| `save:profile` | ProfileHandler | Fetch and save Luogu user profile |
 
 ## 8. Configuration
 
