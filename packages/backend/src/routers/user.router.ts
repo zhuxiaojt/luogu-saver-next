@@ -52,6 +52,8 @@ router.get('/:id', async (ctx: Context) => {
             color: user.color,
             ccfLevel: user.ccfLevel,
             xcpcLevel: user.xcpcLevel,
+            slogan: user.slogan,
+            renderedIntroduction: user.renderedIntroduction,
             prizes: user.prizes,
             profileFetchedAt: user.profileFetchedAt,
             profileStale: stale,

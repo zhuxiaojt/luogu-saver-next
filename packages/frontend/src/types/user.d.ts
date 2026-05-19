@@ -10,8 +10,11 @@ export interface User {
 
 export interface UserPrize {
     year: number;
-    contestName: string;
+    contest: string;
+    event: string | null;
     prize: string;
+    score?: number;
+    rank?: number;
 }
 
 export interface UserProfile {
@@ -20,6 +23,8 @@ export interface UserProfile {
     color: string;
     ccfLevel: number;
     xcpcLevel: number;
+    slogan: string | null;
+    renderedIntroduction: string | null;
     prizes: UserPrize[] | null;
     profileFetchedAt: string | null;
     profileStale: boolean;

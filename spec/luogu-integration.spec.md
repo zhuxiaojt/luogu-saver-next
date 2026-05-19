@@ -182,23 +182,35 @@ interface UserSummary {
 ```typescript
 {
     data: {
+        prizes: {
+            prize: {
+                year: number;
+                contest: string;
+                event: string | null;
+                prize: string;
+                score?: number;
+                rank?: number;
+            };
+        }[];
         user: {
             uid: number;
             name: string;
             color: UserColor;
             ccfLevel: number;
             xcpcLevel: number;
-            prize: {
-                year: number;
-                contestName: string;
-                prize: string;
-            }
-            [];
+            slogan: string | null;        // short tagline, plain text
+            introduction: string | null;  // long bio in raw Markdown
             // ... other UserDetails fields
-        }
-    }
+        };
+    };
 }
 ```
+
+Notes:
+
+- The award list lives at `data.prizes` (top-level), not at `data.user.prize`. Each entry is a one-level wrapper `{ prize: LuoguPrize }`; consumers MUST unwrap the inner object before storing.
+- `data.user.prize` exists in Luogu's response but is unrelated to the certified award list and is typically empty for verified users. Do NOT read from it.
+- `data.user.introduction` is raw Markdown; the saver renders it via the shared `renderMarkdown` pipeline before storing.
 
 The saver consumes only the fields above; all other fields are ignored.
 
@@ -294,7 +306,7 @@ Convert Luogu user summary to local User entity:
 
 1. Parse `targetId` to a positive integer; reject otherwise.
 2. Fetch `https://www.luogu.com/user/{uid}` with `C3vkMode.MODERN`.
-3. Extract `user` and `prize` array from the response.
+3. Extract `user` from `response.data.user` and the award list from `response.data.prizes`, unwrapping the inner `prize` object of each entry.
 4. Call `UserService.saveLuoguUserProfile` with the extracted data.
 5. Emit Socket.IO event `user:{uid}:profile-updated`.
 

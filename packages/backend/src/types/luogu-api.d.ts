@@ -523,8 +523,17 @@ export interface PostData {
     canDelete: boolean;
 }
 
+export interface LuoguPrize {
+    year: number;
+    contest: string;
+    event: string | null;
+    prize: string;
+    score?: number;
+    rank?: number;
+}
+
 export interface UserData {
-    prizes: []; // TODO
+    prizes: { prize: LuoguPrize }[];
     gu: GuRating;
     elo: (EloRating & { previous: EloRating | null })[];
     dailyCounts: Record<string, [number, number]>;

@@ -16,17 +16,20 @@ The system exposes:
 
 Table name: `user`
 
-| Column               | Type         | Constraints           | Description                                         |
-| -------------------- | ------------ | --------------------- | --------------------------------------------------- |
-| `id`                 | INT UNSIGNED | PRIMARY KEY           | Luogu user ID                                       |
-| `name`               | VARCHAR      | NOT NULL              | Luogu user name                                     |
-| `color`              | VARCHAR      | NOT NULL              | Dynamic level color (UserColor enum)                |
-| `ccf_level`          | INT          | NOT NULL, DEFAULT `0` | OI / CCF certification level (`0` = none)           |
-| `xcpc_level`         | INT          | NOT NULL, DEFAULT `0` | ICPC / CCPC certification level (`0` = none)        |
-| `prizes`             | JSON         | NULLABLE              | Array of `UserPrize` records; `NULL` if not fetched |
-| `profile_fetched_at` | DATETIME     | NULLABLE              | Timestamp of the last successful profile fetch      |
-| `created_at`         | DATETIME     | NOT NULL              | Record creation timestamp                           |
-| `updated_at`         | DATETIME     | NOT NULL              | Record update timestamp                             |
+| Column                  | Type         | Constraints           | Description                                                        |
+| ----------------------- | ------------ | --------------------- | ------------------------------------------------------------------ |
+| `id`                    | INT UNSIGNED | PRIMARY KEY           | Luogu user ID                                                      |
+| `name`                  | VARCHAR      | NOT NULL              | Luogu user name                                                    |
+| `color`                 | VARCHAR      | NOT NULL              | Dynamic level color (UserColor enum)                               |
+| `ccf_level`             | INT          | NOT NULL, DEFAULT `0` | OI / CCF certification level (`0` = none)                          |
+| `xcpc_level`            | INT          | NOT NULL, DEFAULT `0` | ICPC / CCPC certification level (`0` = none)                       |
+| `slogan`                | TEXT         | NULLABLE              | Short profile tagline as raw text                                  |
+| `introduction`          | TEXT         | NULLABLE              | Long profile introduction as raw Markdown                          |
+| `rendered_introduction` | TEXT         | NULLABLE              | HTML rendered from `introduction` via the shared markdown pipeline |
+| `prizes`                | JSON         | NULLABLE              | Array of `UserPrize` records; `NULL` if not fetched                |
+| `profile_fetched_at`    | DATETIME     | NULLABLE              | Timestamp of the last successful profile fetch                     |
+| `created_at`            | DATETIME     | NOT NULL              | Record creation timestamp                                          |
+| `updated_at`            | DATETIME     | NOT NULL              | Record update timestamp                                            |
 
 ### 2.2 UserColor Enum
 
@@ -37,12 +40,15 @@ Unchanged from `packages/backend/src/shared/user.ts`. Values: `Gray`, `Blue`, `G
 ```typescript
 interface UserPrize {
     year: number; // Award year, e.g. 2023
-    contestName: string; // Award contest name, free-form string from Luogu
-    prize: string; // Award level/name, free-form string from Luogu
+    contest: string; // Contest name, free-form string from Luogu (e.g. "NOI", "CSP-S")
+    event: string | null; // Contest sub-event, free-form string or null (e.g. "The 2026 Universal Cup Finals")
+    prize: string; // Award level, free-form string from Luogu (e.g. "金牌", "一等奖")
+    score?: number; // Score achieved at the contest, if available
+    rank?: number; // Rank achieved at the contest, if available
 }
 ```
 
-`UserPrize` is stored as one element of the `prizes` JSON array. The shape mirrors the `prize` field in Luogu's `UserDetails` response (`packages/backend/src/types/luogu-api.d.ts`, interface `UserDetails`).
+`UserPrize` is stored as one element of the `prizes` JSON array. The shape mirrors the inner `prize` object inside `response.data.prizes[i].prize` from Luogu's user-page response. See `packages/backend/src/types/luogu-api.d.ts`, interface `LuoguPrize`.
 
 ### 2.4 Level Semantics
 
@@ -77,14 +83,14 @@ Inline content handlers (article, paste) call `UserService.upsertLuoguUser(data)
 }
 ```
 
-`buildUser` MUST NOT touch `prizes` or `profileFetchedAt`. These fields are only written by the profile task handler (Section 5).
+`buildUser` MUST NOT touch `slogan`, `introduction`, `renderedIntroduction`, `prizes`, or `profileFetchedAt`. These fields are only written by the profile task handler (Section 5).
 
 `UserService.upsertLuoguUser`:
 
 1. Requires `data.id` to be defined; throws otherwise.
 2. Performs a TypeORM upsert on the primary key.
 3. Evicts the cache key `user:{id}`.
-4. Does NOT mutate `prizes` or `profile_fetched_at` even if `data` happens to contain them.
+4. Does NOT mutate `slogan`, `introduction`, `renderedIntroduction`, `prizes`, or `profile_fetched_at` even if `data` happens to contain them.
 
 This invariant guarantees that the cheap inline path never clobbers richer data fetched by the profile task.
 
@@ -105,12 +111,12 @@ Same query as `getUserById` but bypasses the cache.
 
 Behavior defined in Section 3.
 
-### 4.4 `saveLuoguUserProfile(data: { uid; name; color; ccfLevel; xcpcLevel; prizes }, manager?): Promise<User>`
+### 4.4 `saveLuoguUserProfile(data: { uid; name; color; ccfLevel; xcpcLevel; slogan; introduction; renderedIntroduction; prizes }, manager?): Promise<User>`
 
 Profile-task write path. MUST:
 
 1. Upsert the user row using the primary key.
-2. Set `ccf_level`, `xcpc_level`, `prizes`, AND `profile_fetched_at = now()` atomically.
+2. Set `ccf_level`, `xcpc_level`, `slogan`, `introduction`, `rendered_introduction`, `prizes`, AND `profile_fetched_at = now()` atomically.
 3. Update `name` and `color` to the incoming values (the profile fetch is authoritative for the moment).
 4. Evict cache key `user:{id}`.
 
@@ -154,8 +160,11 @@ The handler is registered in `packages/backend/src/workers/index.ts` alongside `
 3. Validate that the response has shape `LentilleDataResponse<UserData>`; reject with `UnrecoverableError` otherwise.
 4. Extract:
     - `user: UserDetails` from `response.data.user`
-    - `prizes: UserPrize[]` from `response.data.user.prize` (defensive: default to `[]` if absent or non-array)
-5. Build the payload for `UserService.saveLuoguUserProfile`:
+    - `slogan: string | null` from `response.data.user.slogan`; treat empty strings and non-strings as `null`
+    - `introduction: string | null` from `response.data.user.introduction`; treat empty strings and non-strings as `null`
+    - `prizes: UserPrize[]` from `response.data.prizes`. Each element of `response.data.prizes` is a one-level wrapper `{ prize: LuoguPrize }`; the handler MUST unwrap the inner `prize` object before storing. Despite the name, `response.data.user.prize` is unrelated and may be empty; do NOT read from it. Default to `[]` if `response.data.prizes` is absent or non-array.
+5. If `introduction !== null`, render it via the shared `renderMarkdown` pipeline (`packages/backend/src/lib/markdown.ts`) to produce `renderedIntroduction: string`. Otherwise `renderedIntroduction = null`. The handler does not memoize this; idempotent re-runs re-render.
+6. Build the payload for `UserService.saveLuoguUserProfile`:
     ```typescript
     {
         uid: user.uid,
@@ -163,16 +172,19 @@ The handler is registered in `packages/backend/src/workers/index.ts` alongside `
         color: user.color,
         ccfLevel: user.ccfLevel ?? 0,
         xcpcLevel: user.xcpcLevel ?? 0,
+        slogan,
+        introduction,
+        renderedIntroduction,
         prizes
     }
     ```
-6. Call `UserService.saveLuoguUserProfile`.
-7. Emit Socket.IO event `user:{uid}:profile-updated` to room `user_{uid}` (no payload).
-8. Return `{ skipNextStep: false, data: { text: '' } }`.
+7. Call `UserService.saveLuoguUserProfile`.
+8. Emit Socket.IO event `user:{uid}:profile-updated` to room `user_{uid}` (no payload).
+9. Return `{ skipNextStep: false, data: { text: '' } }`.
 
 ### 5.4 Idempotency
 
-Successive `save:profile` invocations for the same `uid` are idempotent: the row is upserted, `profile_fetched_at` is bumped, and the `prizes` array is replaced wholesale. No history is preserved.
+Successive `save:profile` invocations for the same `uid` are idempotent: the row is upserted, `profile_fetched_at` is bumped, and the `slogan` / `introduction` / `rendered_introduction` / `prizes` fields are replaced wholesale. No history is preserved.
 
 ## 6. User Router
 
@@ -207,6 +219,8 @@ Retrieve a stored user profile by Luogu UID.
     color: UserColor,
     ccfLevel: number,
     xcpcLevel: number,
+    slogan: string | null,
+    renderedIntroduction: string | null,  // HTML; the raw `introduction` is not returned to the client
     prizes: UserPrize[] | null,
     profileFetchedAt: Date | null,
     profileStale: boolean,

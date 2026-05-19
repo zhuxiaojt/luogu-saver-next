@@ -22,6 +22,15 @@ export class User extends BaseEntity {
     @Column({ name: 'xcpc_level', type: 'int', default: 0 })
     xcpcLevel: number;
 
+    @Column({ type: 'text', nullable: true })
+    slogan: string | null;
+
+    @Column({ type: 'text', nullable: true })
+    introduction: string | null;
+
+    @Column({ name: 'rendered_introduction', type: 'text', nullable: true })
+    renderedIntroduction: string | null;
+
     @Column({ type: 'json', nullable: true })
     prizes: UserPrize[] | null;
 
