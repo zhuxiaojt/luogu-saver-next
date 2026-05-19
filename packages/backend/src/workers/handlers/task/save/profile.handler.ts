@@ -84,10 +84,14 @@ export class ProfileHandler implements TaskHandler<SaveTask> {
         emitToRoom(`user_${uid}`, `user:${uid}:profile-updated`);
         logger.info({ uid, prizeCount: prizes.length }, 'Profile saved');
 
+        // The text payload mirrors the contract of save:article / save:paste: emit
+        // whatever raw textual content was saved so downstream LLM steps (if any
+        // are wired up later — currently profile is single-step) can consume it.
+        // Slogan is omitted because of low signal value; prize structure is JSON-only.
         return {
             skipNextStep: false,
             data: {
-                text: ''
+                text: introduction ?? ''
             }
         };
     }

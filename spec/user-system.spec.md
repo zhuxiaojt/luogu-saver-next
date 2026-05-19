@@ -180,7 +180,7 @@ The handler is registered in `packages/backend/src/workers/index.ts` alongside `
     ```
 7. Call `UserService.saveLuoguUserProfile`.
 8. Emit Socket.IO event `user:{uid}:profile-updated` to room `user_{uid}` (no payload).
-9. Return `{ skipNextStep: false, data: { text: '' } }`.
+9. Return `{ skipNextStep: false, data: { text: introduction ?? '' } }`. The handler emits the raw Markdown introduction so that downstream LLM tasks (none exist today; profile refresh is single-step) can consume it via `job.getChildrenValues()`. This mirrors the contract of `save:article` and `save:paste` handlers. Empty string indicates no introduction is set.
 
 ### 5.4 Idempotency
 
