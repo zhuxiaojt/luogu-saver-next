@@ -56,7 +56,8 @@ export class EmbeddingHandler implements TaskHandler<AiTask> {
             skipNextStep: false,
             data: {
                 embedding,
-                text: textToEmbed
+                text: textToEmbed,
+                embeddingLength: embedding.length
             }
         };
     }

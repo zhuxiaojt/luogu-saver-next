@@ -7,6 +7,10 @@ export async function getArticleById(id: string) {
     return (await apiFetch(`/article/query/${id}`)) as ApiResponse<Article>;
 }
 
+export async function getArticlesByIds(ids: string[]) {
+    return await Promise.all(ids.map(id => getArticleById(id)));
+}
+
 export async function getRecentArticles(
     count: number,
     updatedAfter?: string,

@@ -16,6 +16,21 @@ const normalizeSummaryRebuildConcurrency = (value: any) => {
     return clampInt(value, 5, 1, 20);
 };
 
+const normalizeRagArticleIds = (value: any) => {
+    if (!Array.isArray(value)) return [];
+
+    const articleIds: string[] = [];
+    const seen = new Set<string>();
+    for (const item of value) {
+        const articleId = String(item || '').trim();
+        if (!articleId || seen.has(articleId)) continue;
+        articleIds.push(articleId);
+        seen.add(articleId);
+        if (articleIds.length >= 10) break;
+    }
+    return articleIds;
+};
+
 export const WORKFLOW_TEMPLATES_PERMISSION: { [key: string]: Permission | null } = {
     'article-save-pipeline': null,
     'article-censor-pipeline': Permission.CREATE_WORKFLOW,
@@ -194,6 +209,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
         const maxQueries = 5;
         const maxArticles = clampInt(params?.maxArticles, 10, 1, 10);
         const maxChars = clampInt(params?.maxChars, 20000, 1000, 20000);
+        const articleIds = normalizeRagArticleIds(params?.articleIds);
 
         const tasks: TaskDefinition[] = [
             {
@@ -209,6 +225,8 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
             {
                 name: 'plan-queries',
                 fathers: ['read-query'],
+                track: true,
+                report: true,
                 data: {
                     type: 'rag',
                     payload: {
@@ -236,6 +254,8 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                 {
                     name: `keyword-search-${index}`,
                     fathers: [`read-planned-query-${index}`],
+                    track: true,
+                    report: true,
                     data: {
                         type: 'search',
                         payload: {
@@ -247,6 +267,8 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                 {
                     name: `query-embedding-${index}`,
                     fathers: [`read-planned-query-${index}`],
+                    track: true,
+                    report: true,
                     data: {
                         type: 'llm',
                         payload: {
@@ -258,6 +280,8 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                 {
                     name: `vector-search-${index}`,
                     fathers: [`query-embedding-${index}`],
+                    track: true,
+                    report: true,
                     data: {
                         type: 'search',
                         payload: {
@@ -274,11 +298,13 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
             {
                 name: 'build-context',
                 fathers: contextFathers,
+                track: true,
+                report: true,
                 data: {
                     type: 'rag',
                     payload: {
                         target: 'context',
-                        metadata: { maxArticles, maxChars }
+                        metadata: { maxArticles, maxChars, articleIds }
                     }
                 }
             },

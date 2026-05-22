@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { ref } from 'vue';
 import { API_BASE_URL } from '@/utils/api-base-url.ts';
 
-const URL = import.meta.env.VITE_API_URL ? API_BASE_URL : '/';
+const URL = import.meta.env.VITE_API_URL ? API_BASE_URL : undefined;
 const path = import.meta.env.VITE_API_URL ? '/websocket' : '/api/websocket';
 
 const socket: Socket = io(URL, {

@@ -25,7 +25,14 @@ export class RagAnswerHandler implements TaskHandler<RagTask> {
 You are a retrieval-augmented question answering assistant.
 Answer in Chinese.
 Use only the provided documents.
-If the answer cannot be determined from the documents, state that the existing material cannot determine the answer.
+Answer the user's question directly. Do not write prefaces such as "下面根据已有材料" or "需要说明".
+If the documents only cover part of the question, answer the covered part without listing unrelated missing fields.
+If the answer cannot be determined from the documents at all, write exactly: "现有材料无法确定。"
+Do not invite the user to ask follow-up questions. There is no multi-turn conversation.
+Use Markdown.
+All inline math MUST be enclosed as $formula$.
+All display math MUST be enclosed as $$formula$$.
+Do not use backslash-parenthesis math delimiters, backslash-bracket math delimiters, or bare LaTeX environments.
 At the end, list cited article titles and IDs from the documents you used.
 </prompt>
 <context>

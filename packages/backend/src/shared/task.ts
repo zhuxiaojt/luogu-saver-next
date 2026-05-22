@@ -77,6 +77,7 @@ export interface RagTask extends CommonTask {
         metadata: {
             maxArticles?: number;
             maxChars?: number;
+            articleIds?: string[];
         };
     };
 }

@@ -205,6 +205,7 @@ Input parameters:
 | `limit`       | number | no       | 10      | Integer in `[1, 20]`       |
 | `maxArticles` | number | no       | 10      | Integer in `[1, 10]`       |
 | `maxChars`    | number | no       | 20000   | Integer in `[1000, 20000]` |
+| `articleIds`  | array  | no       | `[]`    | At most 10 article IDs     |
 
 Task graph:
 
@@ -216,6 +217,17 @@ Task graph:
 6. For each index `i` in `[0, 4]`, `vector-search-i` depends on `query-embedding-i`
 7. `build-context` depends on `read-query`, every `keyword-search-i`, and every `vector-search-i`
 8. `answer` depends on `build-context` (tracked, reported)
+
+Reported progress tasks:
+
+1. `plan-queries` SHALL be tracked and reported.
+2. Every `keyword-search-i` SHALL be tracked and reported.
+3. Every `query-embedding-i` SHALL be tracked and reported.
+4. Every `vector-search-i` SHALL be tracked and reported.
+5. `build-context` SHALL be tracked and reported.
+6. `answer` SHALL be tracked and reported.
+
+For websocket completed events, reported embedding task payloads SHALL NOT include the full embedding vector. They SHALL include `embeddingLength`.
 
 Task `plan-queries` has type `rag` and target `plan_queries`.
 
@@ -239,6 +251,27 @@ Each `read-planned-query-i` task SHALL:
 For every `read-planned-query-i` where `skipNextStep=false`, both `keyword-search-i` and `query-embedding-i` SHALL run over that exact query text, and `vector-search-i` SHALL run over the resulting embedding.
 
 Task `build-context` SHALL include at most `maxArticles` documents and at most `maxChars` characters in `data.text`.
+
+If `articleIds` contains article IDs:
+
+1. The template SHALL pass at most the first 10 unique non-empty article IDs to `build-context.metadata.articleIds`.
+2. Task `build-context` SHALL load non-deleted articles matching `metadata.articleIds` before adding retrieval hits.
+3. Forced articles from `metadata.articleIds` SHALL appear before retrieved articles in `data.documents`, preserving the `articleIds` order.
+4. Forced articles SHALL count toward `maxArticles` and `maxChars`.
+5. If a forced article is missing or deleted, `build-context` SHALL skip it.
+6. Retrieved articles whose IDs are already included by forced articles SHALL NOT be duplicated.
+7. If forced articles alone exceed `maxChars`, `build-context` SHALL include only the prefix of forced articles that fits in `maxChars`.
+
+Task `answer` SHALL ask the LLM to:
+
+1. Answer in Chinese.
+2. Use Markdown.
+3. Use `$formula$` for every inline mathematical formula.
+4. Use `$$formula$$` for every display mathematical formula.
+5. Not use `\(...\)` or `\[...\]` math delimiters.
+6. Not write prefatory disclaimers such as `下面根据已有材料` or `需要说明`.
+7. Not invite the user to ask follow-up questions.
+8. If no answer can be determined from the documents, output exactly `现有材料无法确定。`.
 
 Permission: `CREATE_WORKFLOW`.
 

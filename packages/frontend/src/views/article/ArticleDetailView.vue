@@ -25,7 +25,8 @@ import {
     NewspaperOutline,
     CalendarOutline,
     ListOutline,
-    TimeOutline
+    TimeOutline,
+    LibraryOutline
 } from '@vicons/ionicons5';
 
 import { useContentSaver } from '@/composables/useContentSaver';
@@ -48,6 +49,8 @@ import { ARTICLE_CATEGORIES, CACHE_STORAGE_KEY, UNKNOWN_CATEGORY } from '@/utils
 import { formatDate } from '@/utils/render';
 
 import { useLocalStorage } from '@/composables/useLocalStorage.ts';
+import { isAuthenticated, startCpOAuthLogin } from '@/utils/auth.ts';
+import { useKnowledgeBase } from '@/utils/knowledge-base.ts';
 
 const route = useRoute();
 const router = useRouter();
@@ -65,6 +68,7 @@ const {
 const articleId = route.params.id as string;
 const article = ref<Article | null>(null);
 const loading = ref(true);
+const knowledgeBase = useKnowledgeBase();
 
 const recommended = ref<PlazaArticle[]>([]);
 const recLoading = ref(false);
@@ -226,6 +230,30 @@ const handleDelete = () => {
     message.info('删除功能暂未开放');
 };
 
+const isInKnowledgeBase = computed(() => knowledgeBase.hasArticle(articleId));
+
+const handleKnowledgeBaseToggle = () => {
+    if (!article.value) return;
+    if (!isAuthenticated.value) {
+        message.warning('请先登录后再管理知识库');
+        startCpOAuthLogin(`/article/${articleId}`);
+        return;
+    }
+
+    if (isInKnowledgeBase.value) {
+        knowledgeBase.removeArticle(articleId);
+        message.success('已从知识库移除');
+        return;
+    }
+
+    const result = knowledgeBase.addArticle({ id: article.value.id, title: article.value.title });
+    if (!result.ok && result.reason === 'limit') {
+        message.warning('知识库最多存放 10 篇文章');
+        return;
+    }
+    message.success(result.reason === 'exists' ? '文章已在知识库中' : '已加入知识库');
+};
+
 const currentCategory = computed(() => {
     if (article.value?.category && ARTICLE_CATEGORIES[article.value.category]) {
         return ARTICLE_CATEGORIES[article.value.category] || UNKNOWN_CATEGORY;
@@ -381,6 +409,17 @@ onMounted(() => {
                                             <NIcon :component="SyncOutline" />
                                         </template>
                                         更新
+                                    </n-button>
+                                    <n-button
+                                        size="small"
+                                        secondary
+                                        :type="isInKnowledgeBase ? 'warning' : 'info'"
+                                        @click="handleKnowledgeBaseToggle"
+                                    >
+                                        <template #icon>
+                                            <NIcon :component="LibraryOutline" />
+                                        </template>
+                                        {{ isInKnowledgeBase ? '移出知识库' : '加入知识库' }}
                                     </n-button>
                                     <n-button size="small" type="error" ghost @click="handleDelete">
                                         <template #icon>

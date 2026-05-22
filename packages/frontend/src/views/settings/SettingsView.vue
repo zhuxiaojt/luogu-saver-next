@@ -6,6 +6,7 @@ import {
     CheckmarkCircleOutline,
     CloudOutline,
     KeyOutline,
+    LibraryOutline,
     RefreshOutline,
     SettingsOutline,
     TrashOutline
@@ -29,12 +30,15 @@ import { useLocalStorage } from '@/composables/useLocalStorage.ts';
 import { getDeviceId } from '@/utils/device-id.ts';
 import { API_BASE_URL } from '@/utils/api-base-url.ts';
 import { formatDate } from '@/utils/render.ts';
+import { useKnowledgeBase } from '@/utils/knowledge-base.ts';
 
 const message = useMessage();
 const loading = ref(false);
 const currentUser = ref<AuthMeResponse | null>(null);
 const errorMessage = ref('');
 const trackingStorage = useLocalStorage(CONSENT_TRACKING_STORAGE_KEY, 'denied');
+const knowledgeBase = useKnowledgeBase();
+const kbArticles = computed(() => knowledgeBase.getArticles());
 
 const trackingEnabled = computed({
     get: () => trackingStorage.value === 'allowed',
@@ -92,6 +96,16 @@ function clearSaveCache() {
         }
     }
     message.success(count ? `已清理 ${count} 项保存缓存` : '没有可清理的保存缓存');
+}
+
+function removeKnowledgeBaseArticle(articleId: string) {
+    knowledgeBase.removeArticle(articleId);
+    message.success('已从知识库移除');
+}
+
+function clearKnowledgeBase() {
+    knowledgeBase.clearArticles();
+    message.success('知识库已清空');
 }
 
 async function copyText(text: string, successText: string) {
@@ -242,6 +256,59 @@ onMounted(loadCurrentUser);
                 </n-space>
             </Card>
 
+            <Card title="RAG 知识库" :icon="LibraryOutline" class="settings-card compact-card">
+                <n-space vertical size="large">
+                    <div class="setting-row">
+                        <div>
+                            <div class="setting-title">
+                                已保存 {{ kbArticles.length }} / 10 篇文章
+                            </div>
+                            <div class="setting-desc">
+                                RAG 问答可选择强制使用这些文章；上下文仍受 20000 字符限制。
+                            </div>
+                        </div>
+                        <n-button
+                            secondary
+                            type="warning"
+                            :disabled="kbArticles.length === 0"
+                            @click="clearKnowledgeBase"
+                        >
+                            清空知识库
+                        </n-button>
+                    </div>
+
+                    <div v-if="kbArticles.length" class="kb-list">
+                        <div v-for="item in kbArticles" :key="item.id" class="kb-item">
+                            <div class="kb-main">
+                                <div class="kb-title">{{ item.title }}</div>
+                                <div class="kb-meta">
+                                    {{ item.id }} · 加入于 {{ formatDate(item.addedAt) }}
+                                </div>
+                            </div>
+                            <n-space>
+                                <n-button
+                                    secondary
+                                    size="small"
+                                    tag="a"
+                                    :href="`/article/${item.id}`"
+                                >
+                                    查看
+                                </n-button>
+                                <n-button
+                                    secondary
+                                    size="small"
+                                    type="error"
+                                    @click="removeKnowledgeBaseArticle(item.id)"
+                                >
+                                    移除
+                                </n-button>
+                            </n-space>
+                        </div>
+                    </div>
+                    <div v-else class="setting-desc">浏览文章时点击“加入知识库”即可添加。</div>
+                </n-space>
+            </Card>
+
             <Card title="连接信息" :icon="CloudOutline" class="settings-card">
                 <n-space vertical size="large">
                     <div class="detail-list">
@@ -324,6 +391,40 @@ onMounted(loadCurrentUser);
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.kb-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.kb-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(47, 109, 181, 0.1);
+    border-radius: 6px;
+    background: rgba(248, 251, 255, 0.78);
+}
+
+.kb-main {
+    min-width: 0;
+}
+
+.kb-title {
+    color: #10233f;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kb-meta {
+    color: #64748b;
+    font-size: 12px;
 }
 
 .account-row,
@@ -413,7 +514,8 @@ onMounted(loadCurrentUser);
 
     .setting-row,
     .status-item,
-    .account-row {
+    .account-row,
+    .kb-item {
         align-items: flex-start;
         flex-direction: column;
     }

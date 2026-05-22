@@ -1,8 +1,14 @@
 import { ref, watch, type Ref } from 'vue';
 
 export function useLocalStorage<T>(key: string, initialValue: T): Ref<T> {
-    const storedValue = localStorage.getItem(key);
     let data: T = initialValue;
+    let storedValue: string | null = null;
+
+    try {
+        storedValue = localStorage.getItem(key);
+    } catch (e) {
+        console.error(`Error reading localStorage key "${key}":`, e);
+    }
 
     if (storedValue) {
         if (typeof initialValue === 'number') {

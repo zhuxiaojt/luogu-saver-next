@@ -69,7 +69,7 @@ export class WorkerHost<T extends CommonTask> {
                 const returnvalue = job.returnvalue as any;
                 emitToRoom(`task:${job.id}`, `task:${job.id}:completed`, {
                     status: 'completed',
-                    result: returnvalue?.__result
+                    result: this.sanitizeReportedResult(returnvalue?.__result)
                 });
             }
             await TaskService.updateTask(
@@ -127,6 +127,18 @@ export class WorkerHost<T extends CommonTask> {
     private shouldEmitTaskEvent(job?: Job<T>) {
         if (!job?.data?.workflowId) return true;
         return job.data.report === true;
+    }
+
+    private sanitizeReportedResult(result: any) {
+        if (!result?.data?.embedding) return result;
+        return {
+            ...result,
+            data: {
+                ...result.data,
+                embedding: [],
+                embeddingLength: result.data.embeddingLength || result.data.embedding.length
+            }
+        };
     }
 
     public async close() {

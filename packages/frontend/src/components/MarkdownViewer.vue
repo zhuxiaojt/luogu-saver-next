@@ -3,13 +3,16 @@ import { ref, onMounted, nextTick, watch } from 'vue';
 import 'katex/dist/katex.min.css';
 import renderMathInElement from 'katex/contrib/auto-render';
 import '@/styles/markdown.css';
+import { renderMarkdown } from '@/api/markdown.ts';
 
 const props = defineProps<{
     content?: string;
     loading?: boolean;
+    preRendered?: boolean;
 }>();
 
 const contentRef = ref<HTMLElement | null>(null);
+const renderedContent = ref('');
 
 const CARET_RIGHT_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
@@ -64,12 +67,24 @@ const initMarkdownBlocks = () => {
 };
 
 const processContent = async () => {
+    if (!props.content) {
+        renderedContent.value = '';
+        return;
+    }
+
+    if (props.preRendered === false) {
+        const rendered = await renderMarkdown(props.content);
+        renderedContent.value = rendered.data.html;
+    } else {
+        renderedContent.value = props.content;
+    }
+
     await nextTick();
     renderMath();
     initMarkdownBlocks();
 };
 
-watch(() => props.content, processContent);
+watch(() => [props.content, props.preRendered], processContent);
 
 onMounted(processContent);
 </script>
@@ -77,9 +92,9 @@ onMounted(processContent);
 <template>
     <div class="md-container">
         <div v-if="loading" class="empty-tip">加载中...</div>
-        <div v-else-if="!content" class="empty-tip">暂无内容</div>
+        <div v-else-if="!renderedContent" class="empty-tip">暂无内容</div>
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-else ref="contentRef" class="md-body" v-html="content"></div>
+        <div v-else ref="contentRef" class="md-body" v-html="renderedContent"></div>
     </div>
 </template>
 

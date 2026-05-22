@@ -13,6 +13,18 @@ type MergedHit = {
     queries: string[];
 };
 
+type RagDocument = {
+    id: string;
+    title: string;
+    summary: string;
+    excerpt: string;
+    authorName: string;
+    score: number;
+    sources: string[];
+    queries: string[];
+    vectorDistance?: number;
+};
+
 export class RagContextHandler implements TaskHandler<RagTask> {
     public taskType = 'rag:context';
 
@@ -28,10 +40,25 @@ export class RagContextHandler implements TaskHandler<RagTask> {
 
         const maxArticles = clampInt(task.payload.metadata?.maxArticles, 10, 1, 10);
         const maxChars = clampInt(task.payload.metadata?.maxChars, 20000, 1000, 20000);
-        const merged = this.mergeHits(childrenValues).slice(0, maxArticles);
-        const documents = [];
+        const forcedArticleIds = this.normalizeArticleIds(task.payload.metadata?.articleIds);
+        const documents: RagDocument[] = [];
+        const includedIds = new Set<string>();
 
+        for (const articleId of forcedArticleIds) {
+            if (documents.length >= maxArticles) break;
+            const document = await this.loadArticleDocument(articleId, {
+                score: 100,
+                sources: ['knowledge-base'],
+                queries: []
+            });
+            if (!document) continue;
+            documents.push(document);
+            includedIds.add(document.id);
+        }
+
+        const merged = this.mergeHits(childrenValues).filter(hit => !includedIds.has(hit.id));
         for (const hit of merged) {
+            if (documents.length >= maxArticles) break;
             const article = await ArticleService.getArticleByIdWithAuthorWithoutCache(hit.id);
             if (!article || article.deleted) continue;
             documents.push({
@@ -62,6 +89,39 @@ export class RagContextHandler implements TaskHandler<RagTask> {
                 documents
             }
         };
+    }
+
+    private async loadArticleDocument(
+        articleId: string,
+        hit: Pick<MergedHit, 'score' | 'sources' | 'queries' | 'vectorDistance'>
+    ): Promise<RagDocument | null> {
+        const article = await ArticleService.getArticleByIdWithAuthorWithoutCache(articleId);
+        if (!article || article.deleted) return null;
+        return {
+            id: article.id,
+            title: article.title,
+            summary: article.summary || '',
+            excerpt: this.truncate(article.content || '', 900),
+            authorName: article.author?.name || '',
+            score: hit.score,
+            sources: hit.sources,
+            queries: hit.queries,
+            vectorDistance: hit.vectorDistance
+        };
+    }
+
+    private normalizeArticleIds(value: unknown): string[] {
+        if (!Array.isArray(value)) return [];
+        const ids: string[] = [];
+        const seen = new Set<string>();
+        for (const item of value) {
+            const articleId = String(item || '').trim();
+            if (!articleId || seen.has(articleId)) continue;
+            ids.push(articleId);
+            seen.add(articleId);
+            if (ids.length >= 10) break;
+        }
+        return ids;
     }
 
     private extractQuestion(childrenValues: ChildrenValues, fallback?: string): string {
