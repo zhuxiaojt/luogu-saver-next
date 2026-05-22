@@ -33,6 +33,10 @@ const props = defineProps({
     }
 });
 
+const emit = defineEmits<{
+    click: [event: MouseEvent];
+}>();
+
 const effectiveIconColor = computed(() => {
     return props.iconColor || themeVars.value.primaryColor;
 });
@@ -54,7 +58,12 @@ const showHeader = computed(() => {
 </script>
 
 <template>
-    <div class="saver-card" :class="{ 'is-hoverable': hoverable }" :style="cardStyle">
+    <div
+        class="saver-card"
+        :class="{ 'is-hoverable': hoverable }"
+        :style="cardStyle"
+        @click="event => emit('click', event)"
+    >
         <div v-if="showHeader" class="card-header">
             <div class="card-title-wrapper">
                 <n-icon

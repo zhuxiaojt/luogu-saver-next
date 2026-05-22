@@ -147,6 +147,7 @@ onMounted(loadSearch);
                     :title-html="renderSafeMarkedHtml(item.formatted?.title, item.title)"
                     :icon="NewspaperOutline"
                     class="result-card"
+                    hoverable
                     @click="openArticle(item.id)"
                 >
                     <div class="result-body">
