@@ -139,40 +139,51 @@ const goToDetail = (id: string) => {
                                 猜你想看
                             </n-tag>
                         </template>
-                        <div class="article-summary">{{ article.summary || '暂无预览...' }}...</div>
-
-                        <n-divider style="margin: 12px 0" />
-
-                        <div class="article-meta">
-                            <div class="left">
-                                <UserLink :user="article.author" show-avatar />
-                                <n-tag
-                                    :color="{
-                                        textColor: getCategoryColor(article.category),
-                                        color: hexToRgba(getCategoryColor(article.category), 0.2),
-                                        borderColor: getCategoryColor(article.category)
-                                    }"
-                                    size="small"
-                                >
-                                    <template #icon>
-                                        <n-icon :component="getCategoryIcon(article.category)" />
-                                    </template>
-                                    {{ getCategoryLabel(article.category) }}
-                                </n-tag>
+                        <div class="article-card-body">
+                            <div class="article-summary">
+                                {{ article.summary || '暂无预览...' }}...
                             </div>
-                            <div class="right">
-                                <n-button
-                                    text
-                                    size="small"
-                                    type="primary"
-                                    @click.stop="goToDetail(article.id)"
-                                >
-                                    阅读全文
-                                    <n-icon
-                                        :component="ArrowForwardOutline"
-                                        style="margin-left: 4px"
-                                    />
-                                </n-button>
+
+                            <div class="article-meta-wrap">
+                                <n-divider style="margin: 12px 0" />
+
+                                <div class="article-meta">
+                                    <div class="left">
+                                        <UserLink :user="article.author" show-avatar />
+                                        <n-tag
+                                            :color="{
+                                                textColor: getCategoryColor(article.category),
+                                                color: hexToRgba(
+                                                    getCategoryColor(article.category),
+                                                    0.2
+                                                ),
+                                                borderColor: getCategoryColor(article.category)
+                                            }"
+                                            size="small"
+                                        >
+                                            <template #icon>
+                                                <n-icon
+                                                    :component="getCategoryIcon(article.category)"
+                                                />
+                                            </template>
+                                            {{ getCategoryLabel(article.category) }}
+                                        </n-tag>
+                                    </div>
+                                    <div class="right">
+                                        <n-button
+                                            text
+                                            size="small"
+                                            type="primary"
+                                            @click.stop="goToDetail(article.id)"
+                                        >
+                                            阅读全文
+                                            <n-icon
+                                                :component="ArrowForwardOutline"
+                                                style="margin-left: 4px"
+                                            />
+                                        </n-button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </Card>
@@ -228,6 +239,21 @@ const goToDetail = (id: string) => {
 
 .article-item :deep(.saver-card) {
     width: 100%;
+}
+
+.article-item :deep(.card-content) {
+    display: flex;
+    flex: 1;
+}
+
+.article-card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.article-meta-wrap {
+    margin-top: auto;
 }
 
 .clickable-card {

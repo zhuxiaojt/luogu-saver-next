@@ -139,6 +139,21 @@
     overflow-wrap: break-word;
 }
 
+.md-body blockquote {
+    margin: 12px 0;
+    padding: 2px 0 2px 14px;
+    border-left: 4px solid #cbd5e1;
+    color: #475569;
+}
+
+.md-body blockquote > :first-child {
+    margin-top: 0;
+}
+
+.md-body blockquote > :last-child {
+    margin-bottom: 0;
+}
+
 .code-container {
     position: relative;
     margin-bottom: 20px;

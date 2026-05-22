@@ -1,17 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import {
-    NAlert,
-    NButton,
-    NDescriptions,
-    NDescriptionsItem,
-    NIcon,
-    NSpace,
-    NSpin,
-    NSwitch,
-    NTag,
-    useMessage
-} from 'naive-ui';
+import { NAlert, NButton, NIcon, NSpace, NSpin, NSwitch, NTag, useMessage } from 'naive-ui';
 import {
     AnalyticsOutline,
     CheckmarkCircleOutline,
@@ -59,6 +48,8 @@ const deviceId = computed(() => localStorage.getItem(DEVICE_ID_STORAGE_KEY) || '
 const authStatus = computed(() => (isAuthenticated.value ? '已登录' : '未登录'));
 const authTagType = computed(() => (isAuthenticated.value ? 'success' : 'default'));
 const registeredUser = computed(() => currentUser.value?.registeredUser || null);
+const currentPath = window.location.pathname;
+const currentHref = window.location.href;
 
 async function loadCurrentUser() {
     if (!isAuthenticated.value) return;
@@ -146,18 +137,22 @@ onMounted(loadCurrentUser);
                             <n-tag :type="authTagType">{{ authStatus }}</n-tag>
                         </div>
 
-                        <n-descriptions label-placement="left" :column="1" size="small">
-                            <n-descriptions-item label="权限值">
-                                {{ currentUser.role }}
-                            </n-descriptions-item>
-                            <n-descriptions-item label="绑定时间">
-                                {{
-                                    registeredUser?.createdAt
-                                        ? formatDate(registeredUser.createdAt)
-                                        : '-'
-                                }}
-                            </n-descriptions-item>
-                        </n-descriptions>
+                        <div class="detail-list">
+                            <div class="detail-row">
+                                <span class="detail-label">权限值</span>
+                                <span class="detail-value">{{ currentUser.role }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">绑定时间</span>
+                                <span class="detail-value">
+                                    {{
+                                        registeredUser?.createdAt
+                                            ? formatDate(registeredUser.createdAt)
+                                            : '-'
+                                    }}
+                                </span>
+                            </div>
+                        </div>
 
                         <n-space>
                             <n-button secondary @click="loadCurrentUser">
@@ -193,16 +188,20 @@ onMounted(loadCurrentUser);
                         <n-switch v-model:value="trackingEnabled" />
                     </div>
 
-                    <n-descriptions label-placement="left" :column="1" size="small">
-                        <n-descriptions-item label="状态">
-                            <n-tag :type="trackingEnabled ? 'success' : 'default'">
-                                {{ trackingEnabled ? '已开启' : '已关闭' }}
-                            </n-tag>
-                        </n-descriptions-item>
-                        <n-descriptions-item label="设备 ID">
-                            <span class="mono-text">{{ deviceId }}</span>
-                        </n-descriptions-item>
-                    </n-descriptions>
+                    <div class="detail-list">
+                        <div class="detail-row">
+                            <span class="detail-label">状态</span>
+                            <span class="detail-value">
+                                <n-tag :type="trackingEnabled ? 'success' : 'default'">
+                                    {{ trackingEnabled ? '已开启' : '已关闭' }}
+                                </n-tag>
+                            </span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">设备 ID</span>
+                            <span class="detail-value mono-text">{{ deviceId }}</span>
+                        </div>
+                    </div>
 
                     <n-space>
                         <n-button secondary @click="resetDeviceId">重置设备 ID</n-button>
@@ -245,23 +244,22 @@ onMounted(loadCurrentUser);
 
             <Card title="连接信息" :icon="CloudOutline" class="settings-card">
                 <n-space vertical size="large">
-                    <n-descriptions label-placement="left" :column="1" size="small">
-                        <n-descriptions-item label="API 地址">
-                            <span class="mono-text">{{ API_BASE_URL }}</span>
-                        </n-descriptions-item>
-                        <n-descriptions-item label="当前页面">
-                            <span class="mono-text">{{ window.location.pathname }}</span>
-                        </n-descriptions-item>
-                    </n-descriptions>
+                    <div class="detail-list">
+                        <div class="detail-row">
+                            <span class="detail-label">API 地址</span>
+                            <span class="detail-value mono-text">{{ API_BASE_URL }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">当前页面</span>
+                            <span class="detail-value mono-text">{{ currentPath }}</span>
+                        </div>
+                    </div>
 
                     <n-space>
                         <n-button secondary @click="copyText(API_BASE_URL, 'API 地址已复制')">
                             复制 API 地址
                         </n-button>
-                        <n-button
-                            secondary
-                            @click="copyText(window.location.href, '当前页面地址已复制')"
-                        >
+                        <n-button secondary @click="copyText(currentHref, '当前页面地址已复制')">
                             复制当前地址
                         </n-button>
                     </n-space>
@@ -298,21 +296,25 @@ onMounted(loadCurrentUser);
 .settings-page {
     max-width: 1180px;
     margin: 0 auto;
+    width: 100%;
 }
 
 .settings-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
     margin-top: 16px;
 }
 
 .settings-card {
+    flex: 1 1 420px;
     min-height: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .compact-card {
-    grid-column: 1 / -1;
+    flex-basis: 100%;
 }
 
 .loading-state,
@@ -330,6 +332,36 @@ onMounted(loadCurrentUser);
     justify-content: space-between;
 }
 
+.account-row,
+.setting-row {
+    align-items: flex-start;
+}
+
+.detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.detail-label {
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.detail-value {
+    min-width: 0;
+    color: #334155;
+    word-break: break-word;
+}
+
 .account-name,
 .setting-title {
     font-size: 16px;
@@ -344,10 +376,12 @@ onMounted(loadCurrentUser);
 }
 
 .mono-text {
+    display: inline-block;
+    max-width: 100%;
     font-family: 'Fira Code', monospace;
     font-size: 12px;
     color: #334155;
-    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 .status-list {
@@ -364,9 +398,17 @@ onMounted(loadCurrentUser);
 }
 
 @media (max-width: 900px) {
-    .settings-grid,
     .status-list {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .settings-grid {
+        flex-direction: column;
+    }
+
+    .settings-card {
+        flex-basis: auto;
+        width: 100%;
     }
 
     .setting-row,
@@ -374,6 +416,13 @@ onMounted(loadCurrentUser);
     .account-row {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+@media (max-width: 520px) {
+    .detail-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
     }
 }
 </style>
