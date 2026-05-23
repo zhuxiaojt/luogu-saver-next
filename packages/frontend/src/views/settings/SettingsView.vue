@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue';
 import { NAlert, NButton, NIcon, NSpace, NSpin, NSwitch, NTag, useMessage } from 'naive-ui';
 import {
     AnalyticsOutline,
-    CheckmarkCircleOutline,
     CloudOutline,
     KeyOutline,
     LibraryOutline,
@@ -27,7 +26,7 @@ import {
     DEVICE_ID_STORAGE_KEY
 } from '@/utils/constants.ts';
 import { useLocalStorage } from '@/composables/useLocalStorage.ts';
-import { getDeviceId } from '@/utils/device-id.ts';
+import { generateDeviceId } from '@/utils/device-id.ts';
 import { API_BASE_URL } from '@/utils/api-base-url.ts';
 import { formatDate } from '@/utils/render.ts';
 import { useKnowledgeBase } from '@/utils/knowledge-base.ts';
@@ -48,12 +47,10 @@ const trackingEnabled = computed({
     }
 });
 
-const deviceId = computed(() => localStorage.getItem(DEVICE_ID_STORAGE_KEY) || '未生成');
+const deviceId = useLocalStorage(DEVICE_ID_STORAGE_KEY, '');
 const authStatus = computed(() => (isAuthenticated.value ? '已登录' : '未登录'));
 const authTagType = computed(() => (isAuthenticated.value ? 'success' : 'default'));
 const registeredUser = computed(() => currentUser.value?.registeredUser || null);
-const currentPath = window.location.pathname;
-const currentHref = window.location.href;
 
 async function loadCurrentUser() {
     if (!isAuthenticated.value) return;
@@ -82,8 +79,8 @@ function handleLogout() {
 }
 
 function resetDeviceId() {
-    localStorage.removeItem(DEVICE_ID_STORAGE_KEY);
-    if (trackingEnabled.value) getDeviceId();
+    deviceId.value = null;
+    if (trackingEnabled.value) deviceId.value = generateDeviceId();
     message.success('设备 ID 已重置');
 }
 
@@ -213,7 +210,7 @@ onMounted(loadCurrentUser);
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">设备 ID</span>
-                            <span class="detail-value mono-text">{{ deviceId }}</span>
+                            <span class="detail-value mono-text">{{ deviceId ?? '未生成' }}</span>
                         </div>
                     </div>
 
@@ -221,8 +218,8 @@ onMounted(loadCurrentUser);
                         <n-button secondary @click="resetDeviceId">重置设备 ID</n-button>
                         <n-button
                             secondary
-                            :disabled="deviceId === '未生成'"
-                            @click="copyText(deviceId, '设备 ID 已复制')"
+                            :disabled="!deviceId"
+                            @click="copyText(deviceId!, '设备 ID 已复制')"
                         >
                             复制设备 ID
                         </n-button>
@@ -263,9 +260,7 @@ onMounted(loadCurrentUser);
                             <div class="setting-title">
                                 已保存 {{ kbArticles.length }} / 10 篇文章
                             </div>
-                            <div class="setting-desc">
-                                RAG 问答可选择强制使用这些文章；上下文仍受 20000 字符限制。
-                            </div>
+                            <div class="setting-desc">RAG 问答可选择强制使用这些文章。</div>
                         </div>
                         <n-button
                             secondary
@@ -316,44 +311,14 @@ onMounted(loadCurrentUser);
                             <span class="detail-label">API 地址</span>
                             <span class="detail-value mono-text">{{ API_BASE_URL }}</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">当前页面</span>
-                            <span class="detail-value mono-text">{{ currentPath }}</span>
-                        </div>
                     </div>
 
                     <n-space>
                         <n-button secondary @click="copyText(API_BASE_URL, 'API 地址已复制')">
                             复制 API 地址
                         </n-button>
-                        <n-button secondary @click="copyText(currentHref, '当前页面地址已复制')">
-                            复制当前地址
-                        </n-button>
                     </n-space>
                 </n-space>
-            </Card>
-
-            <Card
-                title="状态检查"
-                :icon="CheckmarkCircleOutline"
-                class="settings-card compact-card"
-            >
-                <div class="status-list">
-                    <div class="status-item">
-                        <span>账号</span>
-                        <n-tag :type="authTagType">{{ authStatus }}</n-tag>
-                    </div>
-                    <div class="status-item">
-                        <span>数据追踪</span>
-                        <n-tag :type="trackingEnabled ? 'success' : 'default'">
-                            {{ trackingEnabled ? '开启' : '关闭' }}
-                        </n-tag>
-                    </div>
-                    <div class="status-item">
-                        <span>API</span>
-                        <n-tag type="info">{{ API_BASE_URL }}</n-tag>
-                    </div>
-                </div>
             </Card>
         </div>
     </div>

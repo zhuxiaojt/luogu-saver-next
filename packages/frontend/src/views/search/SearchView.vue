@@ -8,6 +8,7 @@ import {
     NGrid,
     NIcon,
     NInput,
+    NInputNumber,
     NPagination,
     NSelect,
     NSpace,
@@ -26,8 +27,27 @@ const route = useRoute();
 const router = useRouter();
 const message = useMessage();
 
+function parseRouteNumber(value: unknown): number | null {
+    const raw = Array.isArray(value) ? value[0] : value;
+    if (raw === undefined || raw === null || raw === '') {
+        return null;
+    }
+
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseAuthorId(value: unknown): number | null {
+    const parsed = parseRouteNumber(value);
+    if (parsed === null || !Number.isInteger(parsed) || parsed <= 0) {
+        return null;
+    }
+    return parsed;
+}
+
 const query = ref((route.query.q as string) || '');
-const category = ref<number | null>(route.query.category ? Number(route.query.category) : null);
+const category = ref<number | null>(parseRouteNumber(route.query.category));
+const authorId = ref<number | null>(parseAuthorId(route.query.authorId));
 const page = ref(Number(route.query.page) || 1);
 const limit = 12;
 const loading = ref(false);
@@ -52,6 +72,7 @@ function updateRoute() {
         query: {
             q: query.value || undefined,
             category: category.value || undefined,
+            authorId: authorId.value || undefined,
             page: page.value > 1 ? page.value : undefined
         }
     });
@@ -63,6 +84,7 @@ async function loadSearch() {
         const response = await searchArticles({
             q: query.value,
             category: category.value,
+            authorId: authorId.value,
             page: page.value,
             limit
         });
@@ -96,7 +118,8 @@ watch(
     () => route.query,
     value => {
         query.value = (value.q as string) || '';
-        category.value = value.category ? Number(value.category) : null;
+        category.value = parseRouteNumber(value.category);
+        authorId.value = parseAuthorId(value.authorId);
         page.value = Number(value.page) || 1;
         loadSearch();
     }
@@ -112,7 +135,7 @@ onMounted(loadSearch);
         </CardTitle>
 
         <Card class="search-controls">
-            <n-grid :x-gap="12" :y-gap="12" cols="1 m:4" responsive="screen">
+            <n-grid :x-gap="12" :y-gap="12" cols="1 m:5" responsive="screen">
                 <n-gi span="1 m:2">
                     <n-input
                         v-model:value="query"
@@ -127,6 +150,17 @@ onMounted(loadSearch);
                 </n-gi>
                 <n-gi>
                     <n-select v-model:value="category" :options="categoryOptions" clearable />
+                </n-gi>
+                <n-gi>
+                    <n-input-number
+                        v-model:value="authorId"
+                        clearable
+                        :show-button="false"
+                        :min="1"
+                        :precision="0"
+                        placeholder="作者 UID"
+                        @keydown.enter="handleSearch"
+                    />
                 </n-gi>
                 <n-gi>
                     <n-button type="primary" block @click="handleSearch">搜索</n-button>

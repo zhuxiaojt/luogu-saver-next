@@ -5,11 +5,15 @@ import { useLocalStorage } from '@/composables/useLocalStorage.ts';
 
 const deviceIdStorage = useLocalStorage(DEVICE_ID_STORAGE_KEY, '');
 
+export function generateDeviceId() {
+    return uuidv4();
+}
+
 export function getDeviceId(): string {
     let deviceId = deviceIdStorage.value;
 
     if (!deviceId) {
-        deviceId = uuidv4();
+        deviceId = generateDeviceId();
         deviceIdStorage.value = deviceId;
     }
 

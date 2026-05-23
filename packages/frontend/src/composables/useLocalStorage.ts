@@ -1,6 +1,6 @@
 import { ref, watch, type Ref } from 'vue';
 
-export function useLocalStorage<T>(key: string, initialValue: T): Ref<T> {
+export function useLocalStorage<T>(key: string, initialValue: T): Ref<T | null> {
     let data: T = initialValue;
     let storedValue: string | null = null;
 
@@ -25,13 +25,13 @@ export function useLocalStorage<T>(key: string, initialValue: T): Ref<T> {
         } else {
             try {
                 data = JSON.parse(storedValue);
-            } catch (e) {
-                console.error(`Error parsing localStorage key "${key}":`, e);
+            } catch {
+                data = storedValue as any;
             }
         }
     }
 
-    const value = ref<T>(data) as Ref<T>;
+    const value = ref<T | null>(data) as Ref<T | null>;
 
     watch(
         value,

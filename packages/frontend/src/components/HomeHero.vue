@@ -20,6 +20,12 @@ const handleSearch = () => {
         return;
     }
 
+    const articleIdMatch = query.match(/^([A-Za-z0-9]{8})$/);
+    if (articleIdMatch?.[1]) {
+        router.push(`/article/${articleIdMatch[1]}`);
+        return;
+    }
+
     router.push({ path: '/search', query: { q: query } });
 };
 </script>
@@ -38,16 +44,18 @@ const handleSearch = () => {
                     </h1>
                 </div>
                 <p class="hero-subtitle">Save everything, keep it alive.</p>
+                <!--
                 <p class="hero-description">
-                    面向洛谷内容的保存、检索与推荐入口。保留熟悉的轻量风格，升级为更清晰的极客蓝信息台。
+                
                 </p>
+                -->
 
                 <div class="hero-search">
                     <n-input
                         v-model:value="searchText"
                         class="mac-input"
                         size="large"
-                        placeholder="输入链接/文章标题或关键词/uid 查看"
+                        placeholder="&nbsp;&nbsp;&nbsp输入链接、文章标题、文章 ID、关键词或作者用户名查看"
                         @keydown.enter="handleSearch"
                     >
                         <template #prefix>
