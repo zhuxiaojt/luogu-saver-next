@@ -311,7 +311,7 @@ async function getProcessor() {
                 }
             })
             .use(rehypeCustomContainers)
-            .use(rehypeSafeKatex)
+            .use(rehypeSafeKatex, { strict: 'ignore' })
             .use(rehypeShiki, {
                 themes: { light: 'github-light', dark: 'github-light' },
                 langs: [

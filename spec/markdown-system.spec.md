@@ -62,3 +62,9 @@ For each rendered heading element `h1`, `h2`, `h3`, `h4`, `h5`, or `h6`:
 4. The inserted `a` element SHALL have `href` equal to `#` followed by the heading `id`.
 5. The inserted `a` element SHALL contain one Lucide Pin SVG.
 6. The heading text SHALL remain outside the inserted `a` element.
+
+## 6. Math Rendering Warnings
+
+The Markdown renderer SHALL pass `strict="ignore"` to KaTeX.
+
+If math content contains LaTeX-incompatible Unicode text, rendering SHALL NOT write a KaTeX strict-mode warning to stdout or stderr.
