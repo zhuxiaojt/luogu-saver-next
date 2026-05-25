@@ -56,7 +56,7 @@ const features = [
     {
         icon: StatsChartOutline,
         label: 'RAG 问答',
-        desc: '依据交互式 LLM 检索推荐相关内容。'
+        desc: '依据文本生成式 AI 检索推荐相关内容。'
     },
     {
         icon: Clipboard,
