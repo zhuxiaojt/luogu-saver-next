@@ -3,6 +3,7 @@ import { AiTask } from '@/shared/task';
 import { UnrecoverableError, Job } from 'bullmq';
 import { llm } from '@/lib/llm';
 import { extractUpsteamData, shouldSkip } from '@/workers/helpers/common.helper';
+import { logger } from '@/lib/logger';
 
 export async function generateArticleSummary(content: string): Promise<string> {
     const prompt = `
@@ -58,6 +59,10 @@ export class SummaryHandler implements TaskHandler<AiTask> {
         }
 
         const result = await generateArticleSummary(content);
+        logger.info(
+            { jobId: job.id, inputLength: content.length, summaryLength: result.length },
+            'Generated article summary'
+        );
 
         return {
             skipNextStep: false,

@@ -3,6 +3,7 @@ import { AiTask } from '@/shared/task';
 import { UnrecoverableError, Job } from 'bullmq';
 import { llm } from '@/lib/llm';
 import { extractUpsteamData, shouldSkip } from '@/workers/helpers/common.helper';
+import { logger } from '@/lib/logger';
 
 export class EmbeddingHandler implements TaskHandler<AiTask> {
     public taskType = 'llm:embedding';
@@ -38,6 +39,10 @@ export class EmbeddingHandler implements TaskHandler<AiTask> {
 
         const textToEmbed = content;
         const { embedding } = await llm.embedding(textToEmbed);
+        logger.info(
+            { jobId: job.id, inputLength: textToEmbed.length, embeddingLength: embedding.length },
+            'Generated embedding'
+        );
         /*
         await EmbeddingService.upsertVector(
             articleId!,

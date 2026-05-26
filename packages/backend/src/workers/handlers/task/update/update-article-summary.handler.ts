@@ -3,6 +3,7 @@ import { ChildrenValues, TaskCommonResult, TaskHandler, WorkflowResult } from '@
 import { extractUpsteamData, shouldSkip } from '@/workers/helpers/common.helper';
 import { Job, UnrecoverableError } from 'bullmq';
 import { ArticleService } from '@/services/article.service';
+import { logger } from '@/lib/logger';
 
 export class UpdateArticleSummaryHandler implements TaskHandler<UpdateTask> {
     public taskType = 'update:article_summary';
@@ -37,6 +38,10 @@ export class UpdateArticleSummaryHandler implements TaskHandler<UpdateTask> {
         }
         article.summary = content;
         await ArticleService.saveArticle(article);
+        logger.info(
+            { articleId: article.id, summaryLength: content.length },
+            'Updated article summary'
+        );
 
         return {
             skipNextStep: false,
