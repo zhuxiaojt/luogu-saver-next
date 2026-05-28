@@ -100,7 +100,7 @@
                                                 </p>
                                                 <p class="footer-element">
                                                     <a
-                                                        href="https://github.com/laikit-dev/luogu-saver/graphs/contributors"
+                                                        href="https://github.com/Ark-Aak/luogu-saver/graphs/contributors"
                                                         class="footer-link"
                                                     >
                                                         <Icon>
@@ -376,7 +376,7 @@ const menuOptions = computed<MenuOption[]>(() => [
 import { THEME_STORAGE_KEY } from '@/utils/constants.ts';
 import { useLocalStorage } from '@/composables/useLocalStorage.ts';
 const themeStorage = useLocalStorage(THEME_STORAGE_KEY, defaultTheme);
-const uiThemeVars = ref<UiThemeVars>(themeStorage.value);
+const uiThemeVars = ref<UiThemeVars>(themeStorage.value as UiThemeVars);
 
 provide(uiThemeKey, uiThemeVars);
 
@@ -491,6 +491,7 @@ setInterval(() => {
     align-items: center;
     color: var(--n-text-color);
     transition: color 0.2s;
+    text-decoration: none;
 }
 .footer-link:hover {
     color: #337ab7 !important;
