@@ -58,7 +58,7 @@
                                                     <Icon>
                                                         <Copyright />
                                                     </Icon>
-                                                    <span> 2025 洛谷保存站 </span>
+                                                    <span> 2025-2026 洛谷保存站 </span>
                                                 </p>
                                                 <p class="footer-element">
                                                     <a
