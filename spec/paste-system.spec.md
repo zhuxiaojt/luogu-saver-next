@@ -135,7 +135,7 @@ The `save:paste` task SHALL:
 
 1. Fetch `https://www.luogu.com/paste/{targetId}`.
 2. Read paste data from `response.currentData.paste`.
-3. If `response.currentData.paste` is absent or null, fail permanently with exact error message `文章不存在`.
+3. If `response.currentData.paste` is absent or null, fail permanently with exact error message `剪贴板不存在`.
 4. Do not read `response.currentData.paste.user` before step 3 succeeds.
 5. Upsert the Luogu paste author before saving the paste.
 6. Save the paste through `PasteService.saveLuoguPaste`.

@@ -19,7 +19,7 @@ export class PasteHandler implements TaskHandler<SaveTask> {
         const data = resp.currentData?.paste;
 
         if (!data) {
-            throw new UnrecoverableError('文章不存在');
+            throw new UnrecoverableError('剪贴板不存在');
         }
 
         const incomingUser = buildUser(data.user);

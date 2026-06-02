@@ -283,7 +283,7 @@ Convert Luogu user summary to local User entity:
 
 1. Fetch paste from Luogu API.
 2. Read paste data from `response.currentData.paste`.
-3. If `response.currentData.paste` is absent or null, fail the task permanently with exact error message `文章不存在`.
+3. If `response.currentData.paste` is absent or null, fail the task permanently with exact error message `剪贴板不存在`.
 4. Do not read `response.currentData.paste.user` before step 3 succeeds.
 5. Build or update User entity for author.
 6. Build Paste entity with:
