@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { Article } from '@/entities/article';
 
 import stringSimilarity from 'string-similarity';
+import Levenshtein from 'fast-levenshtein';
 
 type RecommendedArticle = Article & { reason: string };
 
@@ -268,7 +269,15 @@ export class RecommendationService {
         const finalResult = [],
             titleSimilarIds = [];
         for (const article of authorArticles) {
-            const similarity = stringSimilarity.compareTwoStrings(originTitle, article.title);
+            const levenshteinDistance = Levenshtein.get(originTitle, article.title);
+            const levenshteinSimilarity = Math.max(
+                0,
+                1 - levenshteinDistance / Math.min(article.title.length, originTitle.length)
+            );
+            const similarity = Math.max(
+                stringSimilarity.compareTwoStrings(originTitle, article.title),
+                levenshteinSimilarity
+            );
             if (similarity >= config.recommendation.relevantThreshold) {
                 if (article.id !== articleId) finalResult.push(article.id);
                 titleSimilarIds.push(article.id);
