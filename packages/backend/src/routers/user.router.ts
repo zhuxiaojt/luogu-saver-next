@@ -29,7 +29,7 @@ async function dispatchProfileRefresh(uid: number): Promise<string | null> {
     }
 }
 
-router.get('/:id', async (ctx: Context) => {
+router.get('/query/:id', async (ctx: Context) => {
     const uid = parseUid(ctx.params.id);
     if (uid === null) {
         ctx.fail(400, 'Invalid user ID');

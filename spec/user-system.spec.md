@@ -190,7 +190,7 @@ Successive `save:profile` invocations for the same `uid` are idempotent: the row
 
 Routes are mounted under `/user` and registered in `packages/backend/src/routers/index.ts`.
 
-### 6.1 `GET /user/:id`
+### 6.1 `GET /user/query/:id`
 
 Retrieve a stored user profile by Luogu UID.
 
