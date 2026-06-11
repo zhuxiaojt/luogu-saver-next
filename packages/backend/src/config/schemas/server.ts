@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const ServerSchema = z.object({
+    host: z.string().default('0.0.0.0'),
     port: z.number().default(3000),
     env: z.string().default('development'),
     network: z.preprocess(

@@ -27,7 +27,7 @@ export class ArticleSaveLockService {
         return token;
     }
 
-static async release(articleId: string, token?: string | null) {
+    static async release(articleId: string, token?: string | null) {
         if (!token) return false;
         const key = this.key(articleId);
         const script =
