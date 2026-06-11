@@ -20,6 +20,25 @@ For a supported directive `:::name`, the renderer SHALL output one HTML containe
 3. One title child with class `md-block-title`.
 4. One body child with class `md-block-body`.
 
+The renderer SHALL accept three or more leading colons for supported container directives.
+
+For a supported nested directive block, a closing line containing the same number of colons as the opening line SHALL close that block and SHALL NOT be emitted as text.
+
+For input:
+
+```md
+::::info[outer]
+:::info[inner]
+body
+:::
+::::
+```
+
+Expected postconditions:
+
+1. The rendered HTML contains two nested `md-block info` containers.
+2. The rendered HTML does not contain a paragraph whose text is `::::`.
+
 ## 3. Directive Title Resolution
 
 For a supported directive `:::name`, the rendered title text SHALL be resolved by this precedence order:

@@ -162,7 +162,7 @@ async function getProcessor() {
                             data.hName = 'div';
                             data.hProperties = { className: [`md-align-${align}`] };
                         } else if (name === 'epigraph') {
-                            const author = attributes.author || '';
+                            const author = attributes.author || label || '';
                             data.hName = 'div';
                             data.hProperties = {
                                 className: ['md-epigraph'],
@@ -362,30 +362,8 @@ export default async function renderMarkdown(src: string) {
 
     const processor = await getProcessor();
 
-    const pattern = /^(:{2,})\s*([\w|-]+)(\s*\[.*?])?(\s*\{.*?})?\s*$/;
-    function preprocessLine(line: string) {
-        const match = line.match(pattern);
-        if (match) {
-            const word = match[2];
-            const bracket = match[3] || '';
-            const brace = match[4] || '';
-            let attributes = '';
-            if (bracket) {
-                const content = bracket.trim().slice(1, -1);
-                if (['info', 'warning', 'success', 'error'].includes(word))
-                    attributes += `title="${content}" `;
-                else if (word === 'epigraph') attributes += `author="${content}" `;
-            }
-            if (brace) attributes += brace.trim().slice(1, -1);
-            return `:::${word}{${attributes.trim()}}`;
-        }
-        return line;
-    }
-
-    const preprocessed = src.split(/\r?\n/).map(preprocessLine).join('\n');
-
     try {
-        const file = await processor.process(preprocessed);
+        const file = await processor.process(src);
         return replaceUI(String(file));
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Render Error';
