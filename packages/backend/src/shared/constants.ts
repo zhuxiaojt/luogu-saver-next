@@ -6,5 +6,6 @@ export const QUEUE_NAMES = {
     [TaskType.UPDATE]: 'queue-update',
     [TaskType.SEARCH]: 'queue-search',
     [TaskType.READ]: 'queue-read',
-    [TaskType.RAG]: 'queue-rag'
+    [TaskType.RAG]: 'queue-rag',
+    [TaskType.DISCOVER]: 'queue-discover'
 };

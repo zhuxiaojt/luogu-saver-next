@@ -1,12 +1,22 @@
 import { WorkerHost } from '@/workers/worker-host';
 import { TaskProcessor } from '@/workers/task-processor';
 import { PointGuard } from '@/lib/point-guard';
-import { RagTask, ReadTask, SaveTask, SearchTask, TaskType, UpdateTask } from '@/shared/task';
+import {
+    DiscoverTask,
+    RagTask,
+    ReadTask,
+    SaveTask,
+    SearchTask,
+    TaskType,
+    UpdateTask
+} from '@/shared/task';
 import { AiTask } from '@/shared/task';
 import { QUEUE_NAMES } from '@/shared/constants';
 import { logger } from '@/lib/logger';
 
 import { ArticleHandler } from '@/workers/handlers/task/save/article.handler';
+import { ArticleLinksHandler } from '@/workers/handlers/task/save/article-links.handler';
+import { ArticleUnlockHandler } from '@/workers/handlers/task/save/article-unlock.handler';
 import { PasteHandler } from '@/workers/handlers/task/save/paste.handler';
 import { CommentsHandler } from '@/workers/handlers/task/save/comments.handler';
 import { ProfileHandler } from '@/workers/handlers/task/save/profile.handler';
@@ -30,6 +40,7 @@ import { ReadPasteHandler } from '@/workers/handlers/task/read/read-paste.handle
 import { RagPlanQueriesHandler } from '@/workers/handlers/task/rag/rag-plan-queries.handler';
 import { RagContextHandler } from '@/workers/handlers/task/rag/rag-context.handler';
 import { RagAnswerHandler } from '@/workers/handlers/task/rag/rag-answer.handler';
+import { ArticlePlazaDiscoveryHandler } from '@/workers/handlers/task/discover/article-plaza.handler';
 import { config } from '@/config';
 import { WorkerOptions } from 'bullmq';
 import { FlowManager } from './flow-manager';
@@ -51,8 +62,11 @@ export function bootstrap() {
     const searchProcessor = new TaskProcessor<SearchTask>();
     const readProcessor = new TaskProcessor<ReadTask>();
     const ragProcessor = new TaskProcessor<RagTask>();
+    const discoverProcessor = new TaskProcessor<DiscoverTask>();
 
     saveProcessor.registerHandler(new ArticleHandler());
+    saveProcessor.registerHandler(new ArticleLinksHandler());
+    saveProcessor.registerHandler(new ArticleUnlockHandler());
     saveProcessor.registerHandler(new PasteHandler());
     saveProcessor.registerHandler(new CommentsHandler());
     saveProcessor.registerHandler(new ProfileHandler());
@@ -81,6 +95,8 @@ export function bootstrap() {
     ragProcessor.registerHandler(new RagPlanQueriesHandler());
     ragProcessor.registerHandler(new RagContextHandler());
     ragProcessor.registerHandler(new RagAnswerHandler());
+
+    discoverProcessor.registerHandler(new ArticlePlazaDiscoveryHandler());
 
     const saveWorkerHost = new WorkerHost<SaveTask>(
         QUEUE_NAMES[TaskType.SAVE],
@@ -127,6 +143,14 @@ export function bootstrap() {
     const ragWorkerHost = new WorkerHost<RagTask>(QUEUE_NAMES[TaskType.RAG], ragProcessor, null, {
         concurrency: config.queue.rag.concurrencyLimit
     } as WorkerOptions);
+    const discoverWorkerHost = new WorkerHost<DiscoverTask>(
+        QUEUE_NAMES[TaskType.DISCOVER],
+        discoverProcessor,
+        null,
+        {
+            concurrency: config.queue.discover.concurrencyLimit
+        } as WorkerOptions
+    );
 
     const closeWorkers = async () => {
         logger.info('Shutting down workers...');
@@ -137,6 +161,7 @@ export function bootstrap() {
             searchWorkerHost.close(),
             readWorkerHost.close(),
             ragWorkerHost.close(),
+            discoverWorkerHost.close(),
             FlowManager.closeQueueEvents()
         ]);
     };

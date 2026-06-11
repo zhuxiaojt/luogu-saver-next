@@ -23,6 +23,8 @@ function getQueueConfig(type: TaskType) {
             return config.queue.read;
         case TaskType.RAG:
             return config.queue.rag;
+        case TaskType.DISCOVER:
+            return config.queue.discover;
     }
 }
 

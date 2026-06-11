@@ -56,6 +56,9 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
         if (!targetId) {
             throw new Error('targetId is required for article-save-pipeline');
         }
+        const crawl = params?.crawl;
+        const forceUpdate = params?.forceUpdate === true || crawl?.forceUpdate === true;
+        const saveLockToken = params?.saveLockToken;
 
         const tasks: TaskDefinition[] = [
             {
@@ -67,7 +70,32 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                     payload: {
                         target: 'article',
                         targetId: targetId,
-                        metadata: {}
+                        metadata: { forceUpdate, crawl }
+                    }
+                }
+            },
+            {
+                name: 'discover-links',
+                fathers: ['save'],
+                track: true,
+                data: {
+                    type: 'save',
+                    payload: {
+                        target: 'article_links',
+                        targetId: targetId,
+                        metadata: { crawl }
+                    }
+                }
+            },
+            {
+                name: 'release-save-lock',
+                fathers: ['update-search-index'],
+                data: {
+                    type: 'save',
+                    payload: {
+                        target: 'article_unlock',
+                        targetId: targetId,
+                        metadata: { saveLockToken }
                     }
                 }
             },
@@ -79,7 +107,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                     payload: {
                         target: 'comments',
                         targetId: targetId,
-                        metadata: {}
+                        metadata: { forceUpdate }
                     }
                 }
             },

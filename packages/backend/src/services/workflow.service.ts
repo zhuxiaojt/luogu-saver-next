@@ -16,6 +16,10 @@ import {
 } from '@/services/helpers/repository.helper';
 import { TaskStatus } from '@/shared/task';
 import { getRandomString } from '@/utils/string';
+import {
+    ArticleSaveAlreadyInProgressError,
+    ArticleSaveLockService
+} from '@/services/article-save-lock.service';
 
 export class WorkflowService {
     private static _flowProducer: FlowProducer;
@@ -95,7 +99,20 @@ export class WorkflowService {
     static async createWorkflowFromTemplate(templateName: string, params: any) {
         const builder = WORKFLOW_TEMPLATES[templateName];
         if (!builder) throw new Error(`Template ${templateName} not found`);
-        return this.createWorkflow(builder(params));
+        if (templateName !== 'article-save-pipeline') {
+            return this.createWorkflow(builder(params));
+        }
+
+        const targetId = String(params?.targetId || '').trim();
+        const lockToken = await ArticleSaveLockService.acquire(targetId);
+        if (!lockToken) throw new ArticleSaveAlreadyInProgressError(targetId);
+
+        try {
+            return await this.createWorkflow(builder({ ...params, saveLockToken: lockToken }));
+        } catch (error) {
+            await ArticleSaveLockService.release(targetId, lockToken);
+            throw error;
+        }
     }
 
     static async getWorkflowById(id: string) {

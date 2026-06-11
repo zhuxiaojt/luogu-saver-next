@@ -54,6 +54,25 @@ export class TaskService {
                 { jobId: task.id }
             );
         }
+
+        if (
+            task.type === TaskType.UPDATE ||
+            task.type === TaskType.SEARCH ||
+            task.type === TaskType.READ ||
+            task.type === TaskType.RAG ||
+            task.type === TaskType.DISCOVER
+        ) {
+            const queue = getQueueByType(task.type);
+            await queue.add(
+                task.type,
+                {
+                    id: task.id,
+                    type: task.type,
+                    payload: task.payload
+                },
+                { jobId: task.id }
+            );
+        }
     }
 
     static async updateTask(

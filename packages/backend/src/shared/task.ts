@@ -21,6 +21,8 @@ export interface SaveTask extends CommonTask {
         targetId: string;
         metadata: {
             forceUpdate?: boolean;
+            crawl?: CrawlMetadata;
+            saveLockToken?: string;
         };
     };
 }
@@ -83,6 +85,36 @@ export interface RagTask extends CommonTask {
     };
 }
 
+export interface DiscoverTask extends CommonTask {
+    type: TaskType.DISCOVER;
+    payload: {
+        target: DiscoverTarget;
+        targetId: string;
+        metadata: DiscoverPlazaMetadata;
+    };
+}
+
+export interface CrawlMetadata {
+    enabled?: boolean;
+    runId?: string;
+    depth?: number;
+    maxDepth?: number;
+    maxChildrenPerArticle?: number;
+    sourceArticleId?: string | null;
+    forceUpdate?: boolean;
+}
+
+export interface DiscoverPlazaMetadata {
+    runId: string;
+    page?: number;
+    category?: number | null;
+    maxPages?: number;
+    maxDepth?: number;
+    maxChildrenPerArticle?: number;
+    recursive?: boolean;
+    forceUpdate?: boolean;
+}
+
 export enum TaskStatus {
     PENDING = 0,
     PROCESSING = 1,
@@ -96,7 +128,8 @@ export enum TaskType {
     UPDATE = 'update',
     SEARCH = 'search',
     READ = 'read',
-    RAG = 'rag'
+    RAG = 'rag',
+    DISCOVER = 'discover'
 }
 
 export type TaskDefinition = {
@@ -106,6 +139,7 @@ export type TaskDefinition = {
     [TaskType.SEARCH]: SearchTask;
     [TaskType.READ]: ReadTask;
     [TaskType.RAG]: RagTask;
+    [TaskType.DISCOVER]: DiscoverTask;
 };
 
 export enum UpdateTarget {
@@ -120,6 +154,8 @@ export enum UpdateTarget {
 
 export enum SaveTarget {
     ARTICLE = 'article',
+    ARTICLE_LINKS = 'article_links',
+    ARTICLE_UNLOCK = 'article_unlock',
     PASTE = 'paste',
     BENBEN = 'benben',
     JUDGEMENT = 'judgement',
@@ -143,6 +179,10 @@ export enum RagTarget {
     PLAN_QUERIES = 'plan_queries',
     CONTEXT = 'context',
     ANSWER = 'answer'
+}
+
+export enum DiscoverTarget {
+    ARTICLE_PLAZA = 'article_plaza'
 }
 
 export enum CensorTarget {

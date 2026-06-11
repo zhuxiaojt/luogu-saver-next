@@ -21,11 +21,15 @@ import { getCurrentUser } from '@/api/auth.ts';
 import {
     getAdminUsers,
     getAdminAnnouncement,
+    getDiscoveryRuns,
     rebuildArticleEmbeddings,
     reindexSearch,
+    startArticlePlazaDiscovery,
+    stopDiscoveryRun,
     updateAdminAnnouncement,
     updateAdminUserRole,
-    type AdminUser
+    type AdminUser,
+    type DiscoveryRun
 } from '@/api/admin.ts';
 import { currentAuth, isAuthenticated, setCurrentAuth, startCpOAuthLogin } from '@/utils/auth.ts';
 import { hasAnyPermission, hasPermission, Permission } from '@/utils/permissions.ts';
@@ -39,11 +43,20 @@ const users = ref<AdminUser[]>([]);
 const loading = ref(false);
 const reindexing = ref(false);
 const rebuildingEmbeddings = ref(false);
+const startingDiscovery = ref(false);
+const loadingDiscoveryRuns = ref(false);
 const loadingAnnouncement = ref(false);
 const savingAnnouncement = ref(false);
 const batchSize = ref(100);
 const embeddingBatchSize = ref(20);
 const embeddingConcurrency = ref(5);
+const discoveryMaxPages = ref(50);
+const discoveryMaxDepth = ref(2);
+const discoveryMaxChildrenPerArticle = ref(20);
+const discoveryRecursive = ref(true);
+const discoveryForceUpdate = ref(false);
+const discoveryIncludeCategories = ref(true);
+const discoveryRuns = ref<DiscoveryRun[]>([]);
 const announcementForm = ref({
     title: '公告',
     content: '',
@@ -61,11 +74,15 @@ const canOpenAdmin = computed(() =>
     hasAnyPermission(currentAuth.value?.role, [
         Permission.MANAGE_USERS,
         Permission.MANAGE_SEARCH,
-        Permission.MANAGE_ANNOUNCEMENTS
+        Permission.MANAGE_ANNOUNCEMENTS,
+        Permission.MANAGE_DISCOVERY
     ])
 );
 const canManageAnnouncements = computed(() =>
     hasPermission(currentAuth.value?.role, Permission.MANAGE_ANNOUNCEMENTS)
+);
+const canManageDiscovery = computed(() =>
+    hasPermission(currentAuth.value?.role, Permission.MANAGE_DISCOVERY)
 );
 
 async function loadCurrentAuth() {
@@ -102,6 +119,18 @@ async function loadAnnouncement() {
         }
     } finally {
         loadingAnnouncement.value = false;
+    }
+}
+
+async function loadDiscoveryRuns() {
+    if (!canManageDiscovery.value) return;
+    loadingDiscoveryRuns.value = true;
+    try {
+        const response = await getDiscoveryRuns();
+        if (response.code === 200) discoveryRuns.value = response.data;
+        else message.error(response.message);
+    } finally {
+        loadingDiscoveryRuns.value = false;
     }
 }
 
@@ -190,6 +219,39 @@ async function handleEmbeddingRebuild() {
     message.success('Embedding 重建任务已提交');
 }
 
+async function handleStartDiscovery() {
+    if (!canManageDiscovery.value || startingDiscovery.value) return;
+    startingDiscovery.value = true;
+    try {
+        const response = await startArticlePlazaDiscovery({
+            maxPages: discoveryMaxPages.value,
+            maxDepth: discoveryMaxDepth.value,
+            maxChildrenPerArticle: discoveryMaxChildrenPerArticle.value,
+            recursive: discoveryRecursive.value,
+            forceUpdate: discoveryForceUpdate.value,
+            includeCategories: discoveryIncludeCategories.value
+        });
+        if (response.code === 200) {
+            message.success(`文章发现已启动：${response.data.runId}`);
+            await loadDiscoveryRuns();
+        } else {
+            message.error(response.message);
+        }
+    } finally {
+        startingDiscovery.value = false;
+    }
+}
+
+async function handleStopDiscovery(row: DiscoveryRun) {
+    const response = await stopDiscoveryRun(row.id);
+    if (response.code === 200) {
+        message.success('发现任务已停止');
+        await loadDiscoveryRuns();
+    } else {
+        message.error(response.message);
+    }
+}
+
 const columns = [
     { title: 'ID', key: 'id', width: 80 },
     { title: '名称', key: 'name' },
@@ -226,9 +288,37 @@ const columns = [
     }
 ];
 
+const discoveryColumns = [
+    { title: 'Run ID', key: 'id', width: 260 },
+    { title: '状态', key: 'status', width: 100 },
+    { title: '页面', key: 'visitedPages', width: 80 },
+    { title: '待扫页', key: 'pendingPages', width: 90 },
+    { title: '文章', key: 'discoveredArticles', width: 80 },
+    { title: 'Workflow', key: 'createdWorkflows', width: 100 },
+    { title: '失败页', key: 'failedPages', width: 80 },
+    {
+        title: '操作',
+        key: 'actions',
+        width: 100,
+        render(row: DiscoveryRun) {
+            return h(
+                NButton,
+                {
+                    size: 'small',
+                    type: 'warning',
+                    secondary: true,
+                    disabled: row.status !== 'active',
+                    onClick: () => handleStopDiscovery(row)
+                },
+                { default: () => '停止' }
+            );
+        }
+    }
+];
+
 onMounted(async () => {
     await loadCurrentAuth();
-    await Promise.all([loadUsers(), loadAnnouncement()]);
+    await Promise.all([loadUsers(), loadAnnouncement(), loadDiscoveryRuns()]);
     if (route.query.section === 'announcement') {
         await nextTick();
         announcementSectionRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -337,9 +427,117 @@ onMounted(async () => {
                         <n-tag :type="canManageAnnouncements ? 'success' : 'default'">
                             MANAGE_ANNOUNCEMENTS
                         </n-tag>
+                        <n-tag :type="canManageDiscovery ? 'success' : 'default'">
+                            MANAGE_DISCOVERY
+                        </n-tag>
+                    </n-space>
+                </Card>
+
+                <Card title="文章发现">
+                    <n-space vertical>
+                        <div class="muted">
+                            扫描洛谷文章广场作为种子；递归只沿已保存文章正文中的文章链接继续。
+                        </div>
+                        <n-space align="center">
+                            <n-form-item
+                                label="最大页面"
+                                label-placement="left"
+                                :show-feedback="false"
+                                class="batch-size-field"
+                            >
+                                <n-input-number
+                                    v-model:value="discoveryMaxPages"
+                                    :min="1"
+                                    :max="1000"
+                                />
+                            </n-form-item>
+                            <n-form-item
+                                label="递归深度"
+                                label-placement="left"
+                                :show-feedback="false"
+                                class="batch-size-field"
+                            >
+                                <n-input-number
+                                    v-model:value="discoveryMaxDepth"
+                                    :min="0"
+                                    :max="10"
+                                />
+                            </n-form-item>
+                            <n-form-item
+                                label="每篇子链接"
+                                label-placement="left"
+                                :show-feedback="false"
+                                class="batch-size-field"
+                            >
+                                <n-input-number
+                                    v-model:value="discoveryMaxChildrenPerArticle"
+                                    :min="0"
+                                    :max="200"
+                                />
+                            </n-form-item>
+                        </n-space>
+                        <n-space align="center">
+                            <n-form-item
+                                label="递归"
+                                label-placement="left"
+                                :show-feedback="false"
+                                class="batch-size-field"
+                            >
+                                <n-switch v-model:value="discoveryRecursive" />
+                            </n-form-item>
+                            <n-form-item
+                                label="分类页"
+                                label-placement="left"
+                                :show-feedback="false"
+                                class="batch-size-field"
+                            >
+                                <n-switch v-model:value="discoveryIncludeCategories" />
+                            </n-form-item>
+                            <n-form-item
+                                label="强制更新"
+                                label-placement="left"
+                                :show-feedback="false"
+                                class="batch-size-field"
+                            >
+                                <n-switch v-model:value="discoveryForceUpdate" />
+                            </n-form-item>
+                            <n-button
+                                type="primary"
+                                :disabled="!canManageDiscovery"
+                                :loading="startingDiscovery"
+                                @click="handleStartDiscovery"
+                            >
+                                启动扫描
+                            </n-button>
+                            <n-button
+                                secondary
+                                :disabled="!canManageDiscovery"
+                                :loading="loadingDiscoveryRuns"
+                                @click="loadDiscoveryRuns"
+                            >
+                                刷新
+                            </n-button>
+                        </n-space>
+                        <n-tag v-if="!canManageDiscovery" type="warning">
+                            缺少 MANAGE_DISCOVERY
+                        </n-tag>
                     </n-space>
                 </Card>
             </div>
+
+            <Card title="发现任务" class="discovery-card">
+                <n-spin :show="loadingDiscoveryRuns">
+                    <n-data-table
+                        v-if="canManageDiscovery"
+                        :columns="discoveryColumns"
+                        :data="discoveryRuns"
+                        :pagination="{ pageSize: 5 }"
+                    />
+                    <n-alert v-else type="warning" title="缺少 MANAGE_DISCOVERY">
+                        你没有文章发现管理权限。
+                    </n-alert>
+                </n-spin>
+            </Card>
 
             <Card ref="announcementSectionRef" title="公告管理" class="announcement-card">
                 <n-spin :show="loadingAnnouncement">
@@ -418,6 +616,7 @@ onMounted(async () => {
 
 .admin-header,
 .state-alert,
+.discovery-card,
 .announcement-card,
 .users-card {
     margin-bottom: 16px;
