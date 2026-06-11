@@ -21,7 +21,6 @@ import { getCurrentUser } from '@/api/auth.ts';
 import {
     getAdminUsers,
     getAdminAnnouncement,
-    getDiscoveryRuns,
     rebuildArticleEmbeddings,
     reindexSearch,
     startArticlePlazaDiscovery,
@@ -35,10 +34,11 @@ import { currentAuth, isAuthenticated, setCurrentAuth, startCpOAuthLogin } from 
 import { hasAnyPermission, hasPermission, Permission } from '@/utils/permissions.ts';
 import { useContentSaver } from '@/composables/useContentSaver.ts';
 import HtmlCodeEditor from '@/components/HtmlCodeEditor.vue';
-import websocket, { joinRoom, leaveRoom } from '@/utils/websocket.ts';
+import websocket, { joinRoom, leaveRoom, refreshSocketAuth } from '@/utils/websocket.ts';
 
 const DISCOVERY_RUNS_ROOM = 'discovery:runs';
 const DISCOVERY_RUNS_EVENT = 'discovery:runs:update';
+const SOCKET_JOIN_ERROR_EVENT = 'join:error';
 
 const message = useMessage();
 const route = useRoute();
@@ -66,7 +66,6 @@ const announcementForm = ref({
 });
 const { setupTaskUpdateListener } = useContentSaver();
 let discoverySocketAttached = false;
-let discoveryRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const canManageUsers = computed(() =>
     hasPermission(currentAuth.value?.role, Permission.MANAGE_USERS)
@@ -126,33 +125,24 @@ async function loadAnnouncement() {
     }
 }
 
-async function loadDiscoveryRuns() {
-    if (!canManageDiscovery.value) return;
-    loadingDiscoveryRuns.value = true;
-    try {
-        const response = await getDiscoveryRuns();
-        if (response.code === 200) discoveryRuns.value = response.data;
-        else message.error(response.message);
-    } finally {
-        loadingDiscoveryRuns.value = false;
-    }
+function handleDiscoveryRunsUpdate(payload: { runs?: DiscoveryRun[] }) {
+    if (!Array.isArray(payload.runs)) return;
+    discoveryRuns.value = payload.runs;
+    loadingDiscoveryRuns.value = false;
 }
 
-function scheduleDiscoveryRunsRefresh() {
-    if (!canManageDiscovery.value || discoveryRefreshTimer) return;
-    discoveryRefreshTimer = setTimeout(async () => {
-        discoveryRefreshTimer = null;
-        await loadDiscoveryRuns();
-    }, 500);
-}
-
-function handleDiscoveryRunsUpdate() {
-    scheduleDiscoveryRunsRefresh();
+function handleSocketJoinError(payload: { room?: string; message?: string }) {
+    if (payload.room !== DISCOVERY_RUNS_ROOM) return;
+    loadingDiscoveryRuns.value = false;
+    message.error(payload.message || '发现任务 WebSocket 订阅失败');
 }
 
 function attachDiscoverySocket() {
     if (discoverySocketAttached || !canManageDiscovery.value) return;
+    refreshSocketAuth();
+    loadingDiscoveryRuns.value = true;
     socket.on(DISCOVERY_RUNS_EVENT, handleDiscoveryRunsUpdate);
+    socket.on(SOCKET_JOIN_ERROR_EVENT, handleSocketJoinError);
     joinRoom(DISCOVERY_RUNS_ROOM);
     discoverySocketAttached = true;
 }
@@ -160,8 +150,20 @@ function attachDiscoverySocket() {
 function detachDiscoverySocket() {
     if (!discoverySocketAttached) return;
     socket.off(DISCOVERY_RUNS_EVENT, handleDiscoveryRunsUpdate);
+    socket.off(SOCKET_JOIN_ERROR_EVENT, handleSocketJoinError);
     leaveRoom(DISCOVERY_RUNS_ROOM);
     discoverySocketAttached = false;
+}
+
+function requestDiscoveryRunsSnapshot() {
+    if (!canManageDiscovery.value) return;
+    loadingDiscoveryRuns.value = true;
+    if (discoverySocketAttached) {
+        leaveRoom(DISCOVERY_RUNS_ROOM);
+        joinRoom(DISCOVERY_RUNS_ROOM);
+        return;
+    }
+    attachDiscoverySocket();
 }
 
 async function handleAnnouncementSave() {
@@ -260,7 +262,7 @@ async function handleStartDiscovery() {
         });
         if (response.code === 200) {
             message.success(`文章发现已启动：${response.data.runId}`);
-            await loadDiscoveryRuns();
+            loadingDiscoveryRuns.value = true;
         } else {
             message.error(response.message);
         }
@@ -273,7 +275,7 @@ async function handleStopDiscovery(row: DiscoveryRun) {
     const response = await stopDiscoveryRun(row.id);
     if (response.code === 200) {
         message.success('发现任务已停止');
-        await loadDiscoveryRuns();
+        loadingDiscoveryRuns.value = true;
     } else {
         message.error(response.message);
     }
@@ -346,7 +348,7 @@ const discoveryColumns = [
 onMounted(async () => {
     await loadCurrentAuth();
     attachDiscoverySocket();
-    await Promise.all([loadUsers(), loadAnnouncement(), loadDiscoveryRuns()]);
+    await Promise.all([loadUsers(), loadAnnouncement()]);
     if (route.query.section === 'announcement') {
         await nextTick();
         announcementSectionRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -355,7 +357,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
     detachDiscoverySocket();
-    if (discoveryRefreshTimer) clearTimeout(discoveryRefreshTimer);
 });
 </script>
 
@@ -515,7 +516,7 @@ onBeforeUnmount(() => {
                                 secondary
                                 :disabled="!canManageDiscovery"
                                 :loading="loadingDiscoveryRuns"
-                                @click="loadDiscoveryRuns"
+                                @click="requestDiscoveryRunsSnapshot"
                             >
                                 刷新
                             </n-button>

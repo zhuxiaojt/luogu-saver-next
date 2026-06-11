@@ -126,17 +126,36 @@ The scheduler SHALL:
 
 Room `discovery:runs` SHALL publish event `discovery:runs:update`.
 
+Joining room `discovery:runs` SHALL require Socket.IO authentication with `MANAGE_DISCOVERY`.
+
 The event payload SHALL be:
 
 ```ts
 {
-    runIds: string[];
+    runs: Array<{
+        id: string;
+        seedUrl: string;
+        status: 'active' | 'completed' | 'stopped' | 'failed';
+        maxPages: number;
+        forceUpdate: boolean;
+        visitedPages: number;
+        failedPages: number;
+        pendingPages: number;
+        discoveredArticles: number;
+        createdWorkflows: number;
+        lastError: string | null;
+        finishedAt: string | null;
+        createdAt: string;
+        updatedAt: string;
+    }>;
 }
 ```
 
-`runIds` SHALL contain discovery run IDs that changed since the last emitted update. Clients SHALL
-treat an empty or unknown list as a signal to refresh the discovery run list through the HTTP admin
-API.
+`runs` SHALL contain the same discovery run list as `GET /discover/runs?limit=20`, ordered newest
+first.
+
+When an authorized client joins `discovery:runs`, the server SHALL emit one
+`discovery:runs:update` event to that socket.
 
 The backend SHALL emit `discovery:runs:update` after observable discovery run state changes,
 including:
@@ -146,8 +165,8 @@ including:
 3. Updating page counters, pending page count, completion state, or failure state.
 4. Inserting or updating discovered article rows when the run counters or workflow status can change.
 
-The websocket payload SHALL NOT include the full discovery run list, discovered article rows, article
-IDs, workflow IDs, Luogu cookies, or error stack traces.
+The websocket payload SHALL NOT include discovered article rows, article IDs, workflow IDs, Luogu
+cookies, or error stack traces.
 
 To avoid flooding admin clients while one page discovers many articles, the backend SHOULD batch
 rapid updates and emit at most one `discovery:runs:update` event per short debounce window.

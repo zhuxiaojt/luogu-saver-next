@@ -87,7 +87,7 @@ export class DiscoveryService {
             taskIds.push(task.id);
         }
 
-        ArticleDiscoveryBroadcaster.scheduleRunsUpdate(run.id);
+        ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
         return { run, taskIds };
     }
 
@@ -107,7 +107,7 @@ export class DiscoveryService {
             { id: runId },
             { status: DiscoveryRunStatus.STOPPED, finishedAt: new Date(), pendingPages: 0 }
         );
-        ArticleDiscoveryBroadcaster.scheduleRunsUpdate(runId);
+        ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
     }
 
     static async hasActiveArticlePlazaRun() {
@@ -137,7 +137,7 @@ export class DiscoveryService {
             await repo.save(run);
             return true;
         });
-        if (claimed && consumeBudget) ArticleDiscoveryBroadcaster.scheduleRunsUpdate(runId);
+        if (claimed && consumeBudget) ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
         return claimed;
     }
 
@@ -160,7 +160,7 @@ export class DiscoveryService {
             await repo.save(run);
             return true;
         });
-        if (changed) ArticleDiscoveryBroadcaster.scheduleRunsUpdate(runId);
+        if (changed) ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
     }
 
     static async markPageFailed(runId: string, error: unknown) {
@@ -174,7 +174,7 @@ export class DiscoveryService {
             { id: runId },
             { lastError: message.slice(0, 4000) }
         );
-        ArticleDiscoveryBroadcaster.scheduleRunsUpdate(runId);
+        ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
     }
 
     static async discoverArticle(input: ArticleDiscoveryInput) {
@@ -206,14 +206,14 @@ export class DiscoveryService {
                 'discoveredArticles',
                 1
             );
-            ArticleDiscoveryBroadcaster.scheduleRunsUpdate(input.runId);
+            ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
         } catch (error) {
             if (!isDuplicateKeyError(error)) throw error;
             await getServiceRepository<DiscoveredArticle>(DiscoveredArticle).update(
                 { runId: input.runId, articleId: input.articleId },
                 { lastSeenAt: new Date() }
             );
-            ArticleDiscoveryBroadcaster.scheduleRunsUpdate(input.runId);
+            ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
             return { created: false, reason: 'duplicate' };
         }
 
@@ -235,7 +235,7 @@ export class DiscoveryService {
                 'createdWorkflows',
                 1
             );
-            ArticleDiscoveryBroadcaster.scheduleRunsUpdate(input.runId);
+            ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
             return { created: true, workflowId: workflow.workflowId };
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -243,7 +243,7 @@ export class DiscoveryService {
                 status: DiscoveredArticleStatus.FAILED,
                 reason: message.slice(0, 4000)
             });
-            ArticleDiscoveryBroadcaster.scheduleRunsUpdate(input.runId);
+            ArticleDiscoveryBroadcaster.scheduleRunsUpdate();
             logger.error({ error, input }, 'Failed to create workflow for discovered article');
             return { created: false, reason: message };
         }

@@ -242,6 +242,7 @@ The permission bitmask SHALL define:
 | `MANAGE_SEARCH`        | `1 << 3` | User may manage search indexing        |
 | `MANAGE_USERS`         | `1 << 4` | User may inspect and modify user roles |
 | `MANAGE_ANNOUNCEMENTS` | `1 << 5` | User may manage site announcements     |
+| `MANAGE_DISCOVERY`     | `1 << 6` | User may manage article discovery      |
 
 `ROLE_ADMIN = -1` SHALL satisfy all permission checks.
 
@@ -263,7 +264,31 @@ The backend search reindex endpoint SHALL require `MANAGE_SEARCH`.
 
 The backend announcement admin endpoints SHALL require `MANAGE_ANNOUNCEMENTS`.
 
-## 9. Security Constraints
+## 9. Socket.IO Authentication
+
+Socket.IO connections MAY be anonymous.
+
+When a client connects with `handshake.auth.token`:
+
+1. The backend SHALL validate the token using `RegisteredUserService.validateBearerToken`.
+2. If validation succeeds, the socket SHALL store `{ id, role }` as the authenticated socket user.
+3. If validation fails, the backend SHALL reject the Socket.IO connection.
+
+When a client connects without `handshake.auth.token`, the backend SHALL allow the connection and
+the socket user SHALL be absent.
+
+Socket room joins SHALL be authorized before the socket is added to the room.
+
+Room `discovery:runs` SHALL require `MANAGE_DISCOVERY`. A socket without an authenticated user or
+without `MANAGE_DISCOVERY` SHALL NOT join this room.
+
+`ROLE_ADMIN = -1` SHALL satisfy all Socket.IO room permission checks.
+
+Public rooms, including article, paste, user profile, task, and queue statistics rooms, SHALL remain
+joinable without Socket.IO authentication unless a later specification defines a room-specific
+permission.
+
+## 10. Security Constraints
 
 1. Bearer tokens are stored as plaintext in `registered_user.token`.
 2. Token validation is performed on every request with an Authorization header.
@@ -272,7 +297,7 @@ The backend announcement admin endpoints SHALL require `MANAGE_ANNOUNCEMENTS`.
 5. CP OAuth login SHALL NOT accept a CP OAuth user without a linked Luogu account.
 6. CP OAuth login SHALL NOT mutate the article display `user` table.
 
-## 10. File Locations
+## 11. File Locations
 
 - User entity: `packages/backend/src/entities/user.ts`
 - Registered user entity: `packages/backend/src/entities/registered-user.ts`
