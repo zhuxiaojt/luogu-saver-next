@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { ref } from 'vue';
 import { API_BASE_URL } from '@/utils/api-base-url.ts';
-import { authToken } from '@/utils/auth.ts';
+import { authToken, clearAuthToken } from '@/utils/auth.ts';
 
 const URL = import.meta.env.VITE_API_URL ? API_BASE_URL : undefined;
 const path = import.meta.env.VITE_API_URL ? '/websocket' : '/api/websocket';
@@ -62,6 +62,12 @@ socket.io.on('reconnect_failed', () => {
 
 socket.on('connect_error', error => {
     socketLastError.value = error.message;
+    if (error.message === 'Unauthorized' && authToken.value) {
+        clearAuthToken();
+        activeAuthToken = authToken.value;
+        socket.auth = getAuthPayload();
+        socket.connect();
+    }
 });
 
 export const refreshSocketAuth = () => {
@@ -72,6 +78,8 @@ export const refreshSocketAuth = () => {
     activeAuthToken = nextAuthToken;
     if (socket.connected) {
         socket.disconnect();
+        socket.connect();
+    } else {
         socket.connect();
     }
 };
