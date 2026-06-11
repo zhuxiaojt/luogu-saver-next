@@ -30,10 +30,19 @@ const loading = ref(false);
 const stats = ref<QueueStatsResponse | null>(null);
 const socket = websocket.getInstance();
 
+function pendingCount(queue: QueueStatsItem) {
+    return (
+        queue.counts.waiting +
+        queue.counts.paused +
+        queue.counts.prioritized +
+        queue.counts.waitingChildren
+    );
+}
+
 const totals = computed(() => {
     const initial = { waiting: 0, active: 0, delayed: 0, failed: 0, completed: 0 };
     return (stats.value?.queues || []).reduce((acc, queue) => {
-        acc.waiting += queue.counts.waiting;
+        acc.waiting += pendingCount(queue);
         acc.active += queue.counts.active;
         acc.delayed += queue.counts.delayed;
         acc.failed += queue.counts.failed;
@@ -50,8 +59,7 @@ const lastUpdated = computed(() => {
 function queueStatus(queue: QueueStatsItem) {
     if (queue.isPaused || queue.counts.paused > 0)
         return { label: '暂停', type: 'warning' as const };
-    if (queue.counts.failed > 0) return { label: '有失败', type: 'error' as const };
-    if (queue.counts.waiting > 0 || queue.counts.delayed > 0) {
+    if (pendingCount(queue) > 0 || queue.counts.delayed > 0) {
         return { label: '有堆积', type: 'warning' as const };
     }
     if (queue.counts.active > 0) return { label: '运行中', type: 'info' as const };
@@ -166,7 +174,7 @@ onUnmounted(() => {
                         </div>
                         <div class="metric">
                             <span>等待</span>
-                            <strong>{{ queue.counts.waiting }}</strong>
+                            <strong>{{ pendingCount(queue) }}</strong>
                         </div>
                         <div class="metric">
                             <span>运行</span>
@@ -175,6 +183,18 @@ onUnmounted(() => {
                         <div class="metric">
                             <span>延迟</span>
                             <strong>{{ queue.counts.delayed }}</strong>
+                        </div>
+                        <div class="metric">
+                            <span>依赖等待</span>
+                            <strong>{{ queue.counts.waitingChildren }}</strong>
+                        </div>
+                        <div class="metric">
+                            <span>优先等待</span>
+                            <strong>{{ queue.counts.prioritized }}</strong>
+                        </div>
+                        <div class="metric">
+                            <span>暂停等待</span>
+                            <strong>{{ queue.counts.paused }}</strong>
                         </div>
                         <div class="metric">
                             <span>失败</span>

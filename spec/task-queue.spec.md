@@ -316,6 +316,16 @@ The `queues` array SHALL contain exactly one item for each queue name in `QUEUE_
 
 The endpoint SHALL NOT include job payloads, job return values, error stack traces, user IDs, article IDs, or workflow IDs.
 
+Queue statistics consumers that display a single pending or waiting total SHALL compute it as:
+
+```text
+waiting + paused + prioritized + waitingChildren
+```
+
+The raw `counts.waiting` value SHALL mean only BullMQ `waiting` jobs and SHALL NOT include `waitingChildren`, `prioritized`, `paused`, or `delayed`.
+
+Queue statistics consumers that display a single queue status label SHALL NOT use `failed` count as a status condition. Failed job count MAY be displayed as a numeric metric.
+
 ### 9.2 WebSocket Room
 
 Room `stats:queues` SHALL publish event `stats:queues:update`.
