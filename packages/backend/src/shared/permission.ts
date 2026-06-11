@@ -4,7 +4,8 @@ export enum Permission {
     CREATE_TASK = 1 << 2,
     MANAGE_SEARCH = 1 << 3,
     MANAGE_USERS = 1 << 4,
-    MANAGE_ANNOUNCEMENTS = 1 << 5
+    MANAGE_ANNOUNCEMENTS = 1 << 5,
+    MANAGE_DISCOVERY = 1 << 6
 }
 
 export const ROLE_ADMIN = -1;

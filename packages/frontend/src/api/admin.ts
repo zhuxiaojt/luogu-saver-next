@@ -12,6 +12,23 @@ export interface AdminUser {
     role: number | null;
 }
 
+export interface DiscoveryRun {
+    id: string;
+    seedUrl: string;
+    status: string;
+    maxPages: number;
+    forceUpdate: boolean;
+    visitedPages: number;
+    failedPages: number;
+    pendingPages: number;
+    discoveredArticles: number;
+    createdWorkflows: number;
+    lastError: string | null;
+    finishedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 interface CreateWorkflowTemplateResponse {
     workflowId: string;
     rootJobId: string;
@@ -64,4 +81,27 @@ export async function updateAdminAnnouncement(data: {
         method: 'PUT',
         data
     })) as ApiResponse<Announcement>;
+}
+
+export async function startArticlePlazaDiscovery(data: {
+    maxPages: number;
+    forceUpdate: boolean;
+    includeCategories: boolean;
+}) {
+    return (await apiFetch('/discover/article-plaza/start', {
+        method: 'POST',
+        data
+    })) as ApiResponse<{ runId: string; taskIds: string[]; run: DiscoveryRun }>;
+}
+
+export async function getDiscoveryRuns(limit: number = 20) {
+    return (await apiFetch('/discover/runs', {
+        params: { limit }
+    })) as ApiResponse<DiscoveryRun[]>;
+}
+
+export async function stopDiscoveryRun(runId: string) {
+    return (await apiFetch(`/discover/runs/${runId}/stop`, {
+        method: 'POST'
+    })) as ApiResponse<{ runId: string }>;
 }

@@ -12,6 +12,7 @@ import { emitToRoom } from '@/lib/socket';
 import { TaskHandler, TaskTextResult, WorkflowResult } from '@/workers/types';
 import { COMMENTS_MAX_PAGES } from '@/shared/comment';
 import type { LuoguComment } from '@/shared/comment';
+import { ArticleService } from '@/services/article.service';
 
 interface RepliesData {
     replySlice: Reply[];
@@ -25,6 +26,18 @@ export class CommentsHandler implements TaskHandler<SaveTask> {
         // Article ids are short alphanumeric slugs (length <= 8).
         if (typeof lid !== 'string' || !/^[A-Za-z0-9]{1,8}$/.test(lid)) {
             throw new UnrecoverableError(`Invalid comments targetId: ${JSON.stringify(lid)}`);
+        }
+
+        const forceUpdate = task.payload.metadata?.forceUpdate === true;
+        const article = await ArticleService.getArticleByIdWithoutCache(lid);
+        if (!forceUpdate && !CommentService.isCommentsStale(article)) {
+            logger.info({ lid }, 'Comments are fresh, skipping refresh');
+            return {
+                skipNextStep: true,
+                data: {
+                    text: ''
+                }
+            };
         }
 
         // Cursor pagination: /article/{lid}/replies?sort=&after={lastCommentId}.

@@ -83,6 +83,23 @@ export interface RagTask extends CommonTask {
     };
 }
 
+export interface DiscoverTask extends CommonTask {
+    type: TaskType.DISCOVER;
+    payload: {
+        target: DiscoverTarget;
+        targetId: string;
+        metadata: DiscoverPlazaMetadata;
+    };
+}
+
+export interface DiscoverPlazaMetadata {
+    runId: string;
+    page?: number;
+    category?: number | null;
+    maxPages?: number;
+    forceUpdate?: boolean;
+}
+
 export enum TaskStatus {
     PENDING = 0,
     PROCESSING = 1,
@@ -96,7 +113,8 @@ export enum TaskType {
     UPDATE = 'update',
     SEARCH = 'search',
     READ = 'read',
-    RAG = 'rag'
+    RAG = 'rag',
+    DISCOVER = 'discover'
 }
 
 export type TaskDefinition = {
@@ -106,6 +124,7 @@ export type TaskDefinition = {
     [TaskType.SEARCH]: SearchTask;
     [TaskType.READ]: ReadTask;
     [TaskType.RAG]: RagTask;
+    [TaskType.DISCOVER]: DiscoverTask;
 };
 
 export enum UpdateTarget {
@@ -143,6 +162,10 @@ export enum RagTarget {
     PLAN_QUERIES = 'plan_queries',
     CONTEXT = 'context',
     ANSWER = 'answer'
+}
+
+export enum DiscoverTarget {
+    ARTICLE_PLAZA = 'article_plaza'
 }
 
 export enum CensorTarget {

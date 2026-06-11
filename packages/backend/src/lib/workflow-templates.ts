@@ -56,6 +56,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
         if (!targetId) {
             throw new Error('targetId is required for article-save-pipeline');
         }
+        const forceUpdate = params?.forceUpdate === true;
 
         const tasks: TaskDefinition[] = [
             {
@@ -67,7 +68,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                     payload: {
                         target: 'article',
                         targetId: targetId,
-                        metadata: {}
+                        metadata: { forceUpdate }
                     }
                 }
             },
@@ -79,7 +80,7 @@ export const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplateBuilder> = {
                     payload: {
                         target: 'comments',
                         targetId: targetId,
-                        metadata: {}
+                        metadata: { forceUpdate }
                     }
                 }
             },

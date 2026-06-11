@@ -29,7 +29,8 @@ const QUEUE_LABELS: Record<TaskType, string> = {
     [TaskType.UPDATE]: '更新队列',
     [TaskType.SEARCH]: '搜索队列',
     [TaskType.READ]: '读取队列',
-    [TaskType.RAG]: 'RAG 队列'
+    [TaskType.RAG]: 'RAG 队列',
+    [TaskType.DISCOVER]: '发现队列'
 };
 
 const QUEUE_CONCURRENCY: Record<TaskType, number> = {
@@ -38,7 +39,8 @@ const QUEUE_CONCURRENCY: Record<TaskType, number> = {
     [TaskType.UPDATE]: config.queue.update.concurrencyLimit,
     [TaskType.SEARCH]: config.queue.search.concurrencyLimit,
     [TaskType.READ]: config.queue.read.concurrencyLimit,
-    [TaskType.RAG]: config.queue.rag.concurrencyLimit
+    [TaskType.RAG]: config.queue.rag.concurrencyLimit,
+    [TaskType.DISCOVER]: config.queue.discover.concurrencyLimit
 };
 
 export class QueueStatsService {

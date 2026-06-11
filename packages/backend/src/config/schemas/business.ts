@@ -31,7 +31,8 @@ export const QueueSchema = z.object({
     update: DefaultQueueSectionSchema,
     search: DefaultQueueSectionSchema,
     read: DefaultQueueSectionSchema,
-    rag: DefaultAiQueueSectionSchema
+    rag: DefaultAiQueueSectionSchema,
+    discover: DefaultQueueSectionSchema
 });
 
 export const ApiRateLimitSchema = z.object({
@@ -40,4 +41,21 @@ export const ApiRateLimitSchema = z.object({
     duration: z.number().default(60),
     blockDuration: z.number().default(60),
     keyPrefix: z.string().default('api_rate_limit')
+});
+
+export const DiscoverySchema = z.object({
+    articlePlaza: z.preprocess(
+        value => value ?? {},
+        z.object({
+            enabled: z.boolean().default(true),
+            intervalMs: z
+                .number()
+                .int()
+                .positive()
+                .default(60 * 60 * 1000),
+            maxPages: z.number().int().min(1).max(1000).default(50),
+            includeCategories: z.boolean().default(true),
+            forceUpdate: z.boolean().default(false)
+        })
+    )
 });

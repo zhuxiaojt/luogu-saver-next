@@ -1,13 +1,28 @@
 import { UpdateTask } from '@/shared/task';
-import { TaskCommonResult, TaskHandler, WorkflowResult } from '@/workers/types';
-import { UnrecoverableError } from 'bullmq';
+import { ChildrenValues, TaskCommonResult, TaskHandler, WorkflowResult } from '@/workers/types';
+import { Job, UnrecoverableError } from 'bullmq';
 import { ArticleService } from '@/services/article.service';
 import { SearchService } from '@/services/search.service';
+import { shouldSkip } from '@/workers/helpers/common.helper';
 
 export class UpdateSearchIndexHandler implements TaskHandler<UpdateTask> {
     public taskType = 'update:search_index';
 
-    public async handle(task: UpdateTask): Promise<WorkflowResult<TaskCommonResult>> {
+    public async handle(
+        task: UpdateTask,
+        job: Job<UpdateTask>
+    ): Promise<WorkflowResult<TaskCommonResult>> {
+        const childrenValues = (await job.getChildrenValues()) as ChildrenValues;
+        if (shouldSkip(childrenValues)) {
+            return {
+                skipNextStep: true,
+                data: {
+                    indexed: false,
+                    articleId: task.payload.targetId
+                }
+            };
+        }
+
         const articleId = task.payload.targetId;
         const article = await ArticleService.getArticleByIdWithAuthorWithoutCache(articleId);
 

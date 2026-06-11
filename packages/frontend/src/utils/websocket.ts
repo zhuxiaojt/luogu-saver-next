@@ -1,12 +1,19 @@
 import { io, Socket } from 'socket.io-client';
 import { ref } from 'vue';
 import { API_BASE_URL } from '@/utils/api-base-url.ts';
+import { authToken } from '@/utils/auth.ts';
 
 const URL = import.meta.env.VITE_API_URL ? API_BASE_URL : undefined;
 const path = import.meta.env.VITE_API_URL ? '/websocket' : '/api/websocket';
+let activeAuthToken = authToken.value;
+
+function getAuthPayload() {
+    return authToken.value ? { token: authToken.value } : {};
+}
 
 const socket: Socket = io(URL, {
     path,
+    auth: getAuthPayload,
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
@@ -53,6 +60,22 @@ socket.io.on('reconnect_failed', () => {
     socketLastError.value = 'WebSocket reconnect failed';
 });
 
+socket.on('connect_error', error => {
+    socketLastError.value = error.message;
+});
+
+export const refreshSocketAuth = () => {
+    const nextAuthToken = authToken.value;
+    socket.auth = getAuthPayload();
+    if (nextAuthToken === activeAuthToken) return;
+
+    activeAuthToken = nextAuthToken;
+    if (socket.connected) {
+        socket.disconnect();
+        socket.connect();
+    }
+};
+
 export const joinRoom = (room: string) => {
     const currentCount = joinedRooms.get(room) || 0;
     joinedRooms.set(room, currentCount + 1);
@@ -75,5 +98,6 @@ export default {
         return socket;
     },
     leaveRoom,
-    joinRoom
+    joinRoom,
+    refreshSocketAuth
 };

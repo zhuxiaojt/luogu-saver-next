@@ -93,8 +93,18 @@ export class WorkflowService {
     }
 
     static async createWorkflowFromTemplate(templateName: string, params: any) {
-        const builder = WORKFLOW_TEMPLATES[templateName];
-        if (!builder) throw new Error(`Template ${templateName} not found`);
+        const templateBuilders = new Map<string, unknown>(Object.entries(WORKFLOW_TEMPLATES));
+        const builder = templateBuilders.get(templateName);
+        if (builder === undefined) throw new Error(`Template ${templateName} not found`);
+
+        if (typeof builder !== 'function') {
+            throw new Error(`Template ${templateName} is invalid`);
+        }
+
+        if (templateName !== 'article-save-pipeline') {
+            return this.createWorkflow(builder(params));
+        }
+
         return this.createWorkflow(builder(params));
     }
 

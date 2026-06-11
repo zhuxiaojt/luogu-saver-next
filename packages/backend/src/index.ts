@@ -16,6 +16,7 @@ import * as worker from '@/workers';
 import { initSocket } from './lib/socket';
 import http from 'http';
 import { socketJoinHandler } from '@/socket';
+import { ArticlePlazaDiscoveryScheduler } from '@/services/article-plaza-discovery-scheduler.service';
 
 const app = new Koa();
 const server = http.createServer(app.callback());
@@ -31,7 +32,8 @@ app.use(router.routes()).use(router.allowedMethods());
 
 AppDataSource.initialize().then(() => {
     worker.bootstrap();
-    server.listen(config.port, () => {
-        logger.info({ port: config.port }, `Server started.`);
+    ArticlePlazaDiscoveryScheduler.start();
+    server.listen(config.port, config.host, () => {
+        logger.info({ host: config.host, port: config.port }, `Server started.`);
     });
 });
