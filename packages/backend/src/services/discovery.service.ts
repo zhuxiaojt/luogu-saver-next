@@ -135,7 +135,7 @@ export class DiscoveryService {
         );
     }
 
-    static async claimPage(runId: string): Promise<boolean> {
+    static async claimPage(runId: string, consumeBudget = true): Promise<boolean> {
         return DiscoveryRun.transaction(async manager => {
             const repo = manager.getRepository(DiscoveryRun);
             const run = await repo.findOne({
@@ -143,6 +143,7 @@ export class DiscoveryService {
                 lock: { mode: 'pessimistic_write' }
             });
             if (!run || run.status !== DiscoveryRunStatus.ACTIVE) return false;
+            if (!consumeBudget) return true;
             if (run.visitedPages >= run.maxPages) {
                 return false;
             }

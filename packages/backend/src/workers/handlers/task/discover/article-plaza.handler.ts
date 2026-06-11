@@ -56,7 +56,8 @@ export class ArticlePlazaDiscoveryHandler implements TaskHandler<DiscoverTask> {
                 ? null
                 : Math.trunc(Number(metadata.category));
 
-        if (!(await DiscoveryService.claimPage(runId))) {
+        const isRetry = job.attemptsMade > 0;
+        if (!(await DiscoveryService.claimPage(runId, !isRetry))) {
             await DiscoveryService.finishPage(runId, false);
             return {
                 skipNextStep: false,
@@ -119,8 +120,12 @@ export class ArticlePlazaDiscoveryHandler implements TaskHandler<DiscoverTask> {
                 }
             };
         } catch (error) {
-            await DiscoveryService.markPageFailed(runId, error);
-            await DiscoveryService.finishPage(runId, false);
+            const attempts = job.opts.attempts || 1;
+            const isFinalAttempt = job.attemptsMade + 1 >= attempts;
+            if (isFinalAttempt) {
+                await DiscoveryService.markPageFailed(runId, error);
+                await DiscoveryService.finishPage(runId, false);
+            }
             throw error;
         }
     }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { redisClient } from '@/lib/redis';
 
-const LOCK_TTL_SECONDS = 30 * 60;
+const LOCK_TTL_SECONDS = 24 * 60 * 60;
 
 export class ArticleSaveAlreadyInProgressError extends Error {
     constructor(articleId: string) {
