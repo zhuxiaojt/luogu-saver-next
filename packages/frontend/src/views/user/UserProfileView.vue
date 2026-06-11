@@ -7,13 +7,13 @@ import {
     NEmpty,
     NTag,
     NTime,
-    NSpace,
     NButton,
     NIcon,
     NTooltip,
+    useDialog,
     useMessage
 } from 'naive-ui';
-import { SyncOutline, TrophyOutline, ReaderOutline, PersonCircleOutline } from '@vicons/ionicons5';
+import { SyncOutline, TrophyOutline, ReaderOutline } from '@vicons/ionicons5';
 
 import { getUserProfile, refreshUserProfile } from '@/api/user';
 import socket from '@/utils/websocket';
@@ -22,14 +22,17 @@ import type { UserProfile } from '@/types/user';
 import Card from '@/components/Card.vue';
 import MarkdownViewer from '@/components/MarkdownViewer.vue';
 import UserPrizeBadge from '@/components/UserPrizeBadge.vue';
+import { useContentSaver } from '@/composables/useContentSaver';
 
 const route = useRoute();
 const message = useMessage();
+const dialog = useDialog();
+const { isSaving, setupTaskUpdateListener } = useContentSaver();
 
 const loading = ref(true);
-const notFound = ref(false);
 const profile = ref<UserProfile | null>(null);
 const refreshing = ref(false);
+const saveDialogShown = ref(false);
 
 const uid = computed(() => {
     const raw = route.params.id;
@@ -63,6 +66,7 @@ const room = computed(() => (uid.value !== null ? `user_${uid.value}` : null));
 const event = computed(() => (uid.value !== null ? `user:${uid.value}:profile-updated` : null));
 
 let listenerAttached = false;
+let stopSaveTaskListener: (() => void) | null = null;
 
 function onProfileUpdated() {
     if (uid.value === null) return;
@@ -86,20 +90,20 @@ function detachSocket() {
 async function reload(silent = false) {
     if (uid.value === null) return;
     if (!silent) loading.value = true;
-    notFound.value = false;
     try {
         const res = await getUserProfile(uid.value);
         if (res.code !== 200 || !res.data) {
-            notFound.value = true;
             profile.value = null;
+            promptSaveProfileIfNeeded();
         } else {
             profile.value = res.data;
+            saveDialogShown.value = false;
         }
     } catch (e: any) {
         const status = e?.response?.status;
         if (status === 404) {
-            notFound.value = true;
             profile.value = null;
+            promptSaveProfileIfNeeded();
         } else {
             message.error(e?.message || '加载用户信息失败');
         }
@@ -108,11 +112,80 @@ async function reload(silent = false) {
     }
 }
 
+function trackSaveTask(taskId?: string) {
+    if (!taskId) return;
+    stopSaveTaskListener?.();
+    stopSaveTaskListener = setupTaskUpdateListener(
+        taskId,
+        () => {
+            stopSaveTaskListener = null;
+            message.success('用户主页保存完成');
+            saveDialogShown.value = false;
+            void reload(/* silent */ true);
+        },
+        error => {
+            stopSaveTaskListener = null;
+            dialog.error({
+                title: '保存失败',
+                content: error || '用户主页保存过程中出现错误，请重试。',
+                positiveText: '重试',
+                negativeText: '取消',
+                onPositiveClick: async () => {
+                    await submitProfileSave();
+                },
+                onNegativeClick: () => {
+                    saveDialogShown.value = false;
+                },
+                maskClosable: false,
+                closable: false,
+                closeOnEsc: false
+            });
+        }
+    );
+}
+
+async function submitProfileSave() {
+    if (uid.value === null) throw new Error('无效的用户 ID');
+    const response = await refreshUserProfile(uid.value);
+    if (response.code !== 200 || !response.data?.taskId) {
+        throw new Error(response.message || '保存请求提交失败');
+    }
+    trackSaveTask(response.data.taskId);
+    return response;
+}
+
+function promptSaveProfileIfNeeded() {
+    if (uid.value === null || saveDialogShown.value) return;
+    saveDialogShown.value = true;
+    dialog.warning({
+        title: '用户主页未收录',
+        content: '该用户主页尚未被收录，是否立即发起保存任务？',
+        positiveText: '立即保存',
+        negativeText: '取消',
+        closable: false,
+        closeOnEsc: false,
+        maskClosable: false,
+        onPositiveClick: async () => {
+            try {
+                await submitProfileSave();
+                message.success('保存任务已提交');
+            } catch (e: any) {
+                message.error(e.message || '保存失败');
+                saveDialogShown.value = false;
+            }
+        },
+        onNegativeClick: () => {
+            saveDialogShown.value = false;
+        }
+    });
+}
+
 async function handleManualRefresh() {
     if (uid.value === null || refreshing.value) return;
     refreshing.value = true;
     try {
-        await refreshUserProfile(uid.value);
+        const response = await refreshUserProfile(uid.value);
+        trackSaveTask(response.data?.taskId);
         message.info('已请求刷新,稍后将自动更新');
     } catch (e: any) {
         message.error(e?.message || '刷新失败');
@@ -124,8 +197,10 @@ async function handleManualRefresh() {
 watch(uid, async () => {
     detachSocket();
     profile.value = null;
+    saveDialogShown.value = false;
+    stopSaveTaskListener?.();
+    stopSaveTaskListener = null;
     if (uid.value === null) {
-        notFound.value = true;
         loading.value = false;
         return;
     }
@@ -135,7 +210,6 @@ watch(uid, async () => {
 
 onMounted(async () => {
     if (uid.value === null) {
-        notFound.value = true;
         loading.value = false;
         return;
     }
@@ -145,27 +219,24 @@ onMounted(async () => {
 
 onUnmounted(() => {
     detachSocket();
+    stopSaveTaskListener?.();
 });
 </script>
 
 <template>
     <div class="user-profile-view">
-        <n-spin :show="loading">
-            <Card v-if="!loading && notFound">
-                <n-empty description="未找到该用户" />
-            </Card>
-
-            <div v-else-if="profile" class="profile-grid">
+        <n-spin
+            :show="loading || isSaving"
+            :description="isSaving ? '正在保存并处理...' : undefined"
+        >
+            <div v-if="profile" class="profile-grid">
                 <!-- LEFT COLUMN: introduction (Markdown) -->
                 <div class="profile-left">
-                    <Card class="profile-card profile-card--intro">
-                        <template #title>
-                            <n-space align="center" :size="8">
-                                <n-icon size="20"><ReaderOutline /></n-icon>
-                                <span>个人介绍</span>
-                            </n-space>
-                        </template>
-
+                    <Card
+                        class="profile-card profile-card--intro"
+                        title="个人介绍"
+                        :icon="ReaderOutline"
+                    >
                         <MarkdownViewer
                             v-if="profile.renderedIntroduction"
                             :content="profile.renderedIntroduction"
@@ -177,13 +248,6 @@ onUnmounted(() => {
                 <!-- RIGHT COLUMN: identity card + compact prizes list -->
                 <div class="profile-right">
                     <Card class="profile-card profile-card--identity">
-                        <template #title>
-                            <n-space align="center" :size="8">
-                                <n-icon size="20"><PersonCircleOutline /></n-icon>
-                                <span>个人信息</span>
-                            </n-space>
-                        </template>
-
                         <div class="identity-header">
                             <n-avatar
                                 round
@@ -253,14 +317,11 @@ onUnmounted(() => {
                         </div>
                     </Card>
 
-                    <Card class="profile-card profile-card--prizes">
-                        <template #title>
-                            <n-space align="center" :size="8">
-                                <n-icon size="20"><TrophyOutline /></n-icon>
-                                <span>获奖信息</span>
-                            </n-space>
-                        </template>
-
+                    <Card
+                        class="profile-card profile-card--prizes"
+                        title="获奖信息"
+                        :icon="TrophyOutline"
+                    >
                         <n-empty
                             v-if="orderedPrizes.length === 0"
                             :description="

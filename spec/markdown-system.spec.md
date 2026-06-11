@@ -68,3 +68,11 @@ For each rendered heading element `h1`, `h2`, `h3`, `h4`, `h5`, or `h6`:
 The Markdown renderer SHALL pass `strict="ignore"` to KaTeX.
 
 If math content contains LaTeX-incompatible Unicode text, rendering SHALL NOT write a KaTeX strict-mode warning to stdout or stderr.
+
+## 7. Unsupported Directives
+
+Only block container directives listed in Section 2 are supported.
+
+If the parser produces an inline text directive or a leaf directive, the renderer SHALL convert it back to literal Markdown text.
+
+For input text `2023/12/15 9:29:37 [通过](https://www.luogu.com.cn/record/139634319)。`, the rendered HTML SHALL keep `9:29:37`, the link, and the trailing punctuation inside one paragraph element.

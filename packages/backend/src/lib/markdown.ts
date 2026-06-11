@@ -120,6 +120,14 @@ async function getProcessor() {
 
         function remarkCustomContainers() {
             return (tree: any) => {
+                const stringifyDirective = (node: any) => {
+                    const label =
+                        node.children?.map((child: any) => child.value || '').join('') || '';
+                    const attributes = Object.entries(node.attributes || {})
+                        .map(([key, value]) => (value === true ? key : `${key}="${value}"`))
+                        .join(' ');
+                    return `:${node.name}${label ? `[${label}]` : ''}${attributes ? `{${attributes}}` : ''}`;
+                };
                 const extractDirectiveLabel = (node: any) => {
                     const labelNode = node.children?.[0];
                     if (!labelNode?.data?.directiveLabel) return '';
@@ -132,6 +140,16 @@ async function getProcessor() {
                 };
 
                 visit(tree, node => {
+                    if (node.type === 'textDirective' || node.type === 'leafDirective') {
+                        node.type = 'text';
+                        node.value = stringifyDirective(node);
+                        delete node.name;
+                        delete node.attributes;
+                        delete node.children;
+                        delete node.data;
+                        return;
+                    }
+
                     if (node.type === 'containerDirective') {
                         const data = node.data || (node.data = {});
                         const attributes = node.attributes || {};

@@ -139,6 +139,23 @@
     overflow-wrap: break-word;
 }
 
+.md-body .katex-display {
+    display: block;
+    width: 100%;
+    text-align: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.md-body .katex-display > .katex {
+    display: inline-block;
+    text-align: center;
+}
+
+.md-body p:has(> .katex:first-child:last-child) {
+    text-align: center;
+}
+
 .md-body :is(h1, h2, h3, h4, h5, h6) {
     display: flex;
     align-items: center;
